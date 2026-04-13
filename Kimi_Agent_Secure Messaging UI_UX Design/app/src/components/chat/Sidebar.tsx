@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar } from "@/components/common/Avatar";
@@ -20,6 +20,10 @@ import {
   UserCheck,
   Sparkles,
   UserMinus,
+  Pin,
+  PinOff,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { AddContactModal } from "./AddContactModal";
 import { ProfileEdit } from "@/components/profile/ProfileEdit";
@@ -607,7 +611,8 @@ const ReportModal: React.FC<{ chatName: string; onClose: () => void }> = ({
 // ── Sidebar Principal ──────────────────────────────────────────────────────────
 export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
   const { user, logout } = useAuth();
-  const { chats, selectedChat, selectChat, createGroup, removeContact } = useChat();
+  const { chats, selectedChat, selectChat, createGroup, removeContact } =
+    useChat();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
@@ -616,13 +621,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettings, setShowSettings] = useState(false); // ← NUEVO
   const [showAIChat, setShowAIChat] = useState(false); // ← NUEVO
-  const [localGroups, setLocalGroups] = useState<any[]>([]);
   const [menuChatId, setMenuChatId] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<Record<string, boolean>>({});
   const [reportChat, setReportChat] = useState<any | null>(null);
-  const [confirmRemoveContact, setConfirmRemoveContact] = useState<{ name: string; contactId: string } | null>(null);
+  const [confirmRemoveContact, setConfirmRemoveContact] = useState<{
+    name: string;
+    contactId: string;
+  } | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const allChats = [...chats, ...localGroups];
+  const STORAGE_KEY_PINNED = `nexttalk_pinned_${user?.phone}`;
+  const STORAGE_KEY_ARCHIVED = `nexttalk_archived_${user?.phone}`;
+
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem(`nexttalk_pinned_${user?.phone}`) || "[]"
+      );
+    } catch {
+      return [];
+    }
+  });
+  const [archivedIds, setArchivedIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem(`nexttalk_archived_${user?.phone}`) || "[]"
+      );
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_PINNED, JSON.stringify(pinnedIds));
+  }, [pinnedIds]);
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_ARCHIVED, JSON.stringify(archivedIds));
+  }, [archivedIds]);
 
   const getOtherParticipant = (chat: any) => {
     if (chat.isGroup) return null;
@@ -648,8 +683,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
     return getOtherParticipant(chat)?.online || false;
   };
 
-  const filteredChats = allChats.filter((chat) =>
-    getChatName(chat).toLowerCase().includes(searchQuery.toLowerCase())
+  const sortChats = (list: any[]) => {
+    return [...list].sort((a, b) => {
+      const aId = a._id || a.id;
+      const bId = b._id || b.id;
+      const aPinned = pinnedIds.includes(aId);
+      const bPinned = pinnedIds.includes(bId);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      const aTime = new Date(
+        a.lastMessage?.createdAt || a.updatedAt || 0
+      ).getTime();
+      const bTime = new Date(
+        b.lastMessage?.createdAt || b.updatedAt || 0
+      ).getTime();
+      return bTime - aTime;
+    });
+  };
+
+  const activeChats = chats.filter(
+    (c) => !archivedIds.includes(c._id || (c as any).id)
+  );
+  const archivedChats = chats.filter((c) =>
+    archivedIds.includes(c._id || (c as any).id)
+  );
+  const displayList = showArchived ? archivedChats : activeChats;
+  const filteredChats = sortChats(
+    displayList.filter((chat) =>
+      getChatName(chat).toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   const handleSelectChat = (chat: any) => {
@@ -687,6 +749,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
     setMenuChatId(null);
   };
 
+  const handleTogglePin = (chatId: string) => {
+    setPinnedIds((prev) =>
+      prev.includes(chatId)
+        ? prev.filter((id) => id !== chatId)
+        : [...prev, chatId]
+    );
+    setMenuChatId(null);
+  };
+
+  const handleToggleArchive = (chatId: string) => {
+    setArchivedIds((prev) =>
+      prev.includes(chatId)
+        ? prev.filter((id) => id !== chatId)
+        : [...prev, chatId]
+    );
+    setMenuChatId(null);
+  };
+
   const handleReport = (chat: any) => {
     setReportChat(chat);
     setMenuChatId(null);
@@ -698,8 +778,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
   };
 
   const handleRemoveContact = (chat: any) => {
-    const other = chat.participants?.find((p: any) => p.phone !== user?.phone) || chat.participants?.[0];
-    const name = chat.isGroup ? (chat.groupName || "Grupo") : (other?.name || other?.phone || "Desconocido");
+    const other =
+      chat.participants?.find((p: any) => p.phone !== user?.phone) ||
+      chat.participants?.[0];
+    const name = chat.isGroup
+      ? chat.groupName || "Grupo"
+      : other?.name || other?.phone || "Desconocido";
     if (other?._id) {
       setConfirmRemoveContact({ name, contactId: other._id });
     }
@@ -823,12 +907,53 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
           </div>
         </div>
 
+        {/* Tab Archivados — solo si hay chats archivados */}
+        {archivedChats.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              borderBottom: "1px solid rgba(139,92,246,0.15)",
+            }}
+          >
+            {[
+              { label: "Chats", archived: false },
+              { label: `Archivados (${archivedChats.length})`, archived: true },
+            ].map(({ label, archived }) => (
+              <button
+                key={label}
+                onClick={() => setShowArchived(archived)}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "none",
+                  borderBottom:
+                    showArchived === archived
+                      ? "2px solid #a78bfa"
+                      : "2px solid transparent",
+                  color:
+                    showArchived === archived
+                      ? "#a78bfa"
+                      : "rgba(255,255,255,0.4)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "color 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Lista de chats */}
         <div
           className="flex-1 overflow-y-auto scrollbar-custom"
           onClick={() => menuChatId && setMenuChatId(null)}
         >
-          {allChats.length === 0 ? (
+          {chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
               <div className="w-16 h-16 mb-4 rounded-full bg-secure-purple/20 flex items-center justify-center">
                 <UserPlus className="w-8 h-8 text-secure-lilac" />
@@ -865,6 +990,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
                 const lastMsgTime =
                   chat.lastMessage?.createdAt || chat.updatedAt;
                 const isBlocked = blocked[chatId];
+                const isPinned = pinnedIds.includes(chatId);
+                const isArchived = archivedIds.includes(chatId);
                 const showMenu = menuChatId === chatId;
 
                 return (
@@ -909,10 +1036,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
                           <h4
-                            className={`font-medium truncate ${
+                            className={`font-medium truncate flex items-center gap-1 ${
                               isSelected ? "text-white" : "text-gray-200"
                             }`}
                           >
+                            {isPinned && (
+                              <Pin
+                                size={11}
+                                color="#a78bfa"
+                                style={{ flexShrink: 0 }}
+                              />
+                            )}
                             {name}
                             {isBlocked && (
                               <span
@@ -994,9 +1128,97 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
                           borderRadius: 12,
                           overflow: "hidden",
                           boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                          minWidth: 190,
+                          minWidth: 200,
                         }}
                       >
+                        {/* Fijar */}
+                        <button
+                          onClick={() => handleTogglePin(chatId)}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: isPinned
+                              ? "#a78bfa"
+                              : "rgba(255,255,255,0.75)",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                            textAlign: "left" as const,
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background =
+                              "rgba(255,255,255,0.06)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "none")
+                          }
+                        >
+                          {isPinned ? (
+                            <>
+                              <PinOff size={15} /> Desfijar
+                            </>
+                          ) : (
+                            <>
+                              <Pin size={15} /> Fijar chat
+                            </>
+                          )}
+                        </button>
+                        <div
+                          style={{
+                            height: 1,
+                            background: "rgba(255,255,255,0.06)",
+                            margin: "0 10px",
+                          }}
+                        />
+                        {/* Archivar */}
+                        <button
+                          onClick={() => handleToggleArchive(chatId)}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: isArchived
+                              ? "#4ade80"
+                              : "rgba(255,255,255,0.75)",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                            textAlign: "left" as const,
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background =
+                              "rgba(255,255,255,0.06)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "none")
+                          }
+                        >
+                          {isArchived ? (
+                            <>
+                              <ArchiveRestore size={15} /> Desarchivar
+                            </>
+                          ) : (
+                            <>
+                              <Archive size={15} /> Archivar
+                            </>
+                          )}
+                        </button>
+                        <div
+                          style={{
+                            height: 1,
+                            background: "rgba(255,255,255,0.06)",
+                            margin: "0 10px",
+                          }}
+                        />
                         <button
                           onClick={() => handleToggleBlock(chatId)}
                           style={{
@@ -1068,13 +1290,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
                           Reportar
                         </button>
 
-                        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 10px" }} />
+                        <div
+                          style={{
+                            height: 1,
+                            background: "rgba(255,255,255,0.06)",
+                            margin: "0 10px",
+                          }}
+                        />
 
                         <button
                           onClick={() => handleRemoveContact(chat)}
-                          style={{ width: "100%", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", color: "#f87171", fontSize: 13, fontFamily: "inherit", textAlign: "left" as const }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.07)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#f87171",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                            textAlign: "left" as const,
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background =
+                              "rgba(239,68,68,0.07)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "none")
+                          }
                         >
                           <UserMinus size={15} />
                           Eliminar contacto
@@ -1123,19 +1369,108 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobile, onSelectChat }) => {
 
       {/* ── Modal confirmar eliminar contacto ── */}
       {confirmRemoveContact && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "rgba(15,8,30,0.98)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 18, padding: 28, width: "100%", maxWidth: 320, textAlign: "center" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(15,8,30,0.98)",
+              border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 18,
+              padding: 28,
+              width: "100%",
+              maxWidth: 320,
+              textAlign: "center" as const,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+              }}
+            >
               <UserMinus size={24} color="#f87171" />
             </div>
-            <h3 style={{ color: "#fff", fontSize: 17, fontWeight: 600, margin: "0 0 8px" }}>¿Eliminar contacto?</h3>
-            <p style={{ color: "#9ca3af", fontSize: 13, margin: "0 0 4px", lineHeight: 1.5 }}>
-              Vas a eliminar a <strong style={{ color: "#fff" }}>{confirmRemoveContact.name}</strong> de tus contactos.
+            <h3
+              style={{
+                color: "#fff",
+                fontSize: 17,
+                fontWeight: 600,
+                margin: "0 0 8px",
+              }}
+            >
+              ¿Eliminar contacto?
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: 13,
+                margin: "0 0 4px",
+                lineHeight: 1.5,
+              }}
+            >
+              Vas a eliminar a{" "}
+              <strong style={{ color: "#fff" }}>
+                {confirmRemoveContact.name}
+              </strong>{" "}
+              de tus contactos.
             </p>
-            <p style={{ color: "#6b7280", fontSize: 12, margin: "0 0 24px" }}>El historial de mensajes no se borrará.</p>
+            <p style={{ color: "#6b7280", fontSize: 12, margin: "0 0 24px" }}>
+              El historial de mensajes no se borrará.
+            </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmRemoveContact(null)} style={{ flex: 1, padding: "12px", borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontSize: 14, fontFamily: "inherit", fontWeight: 500 }}>Cancelar</button>
-              <button onClick={doRemoveContact} style={{ flex: 1, padding: "12px", borderRadius: 12, background: "rgba(239,68,68,0.75)", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "inherit", fontWeight: 600 }}>Sí, eliminar</button>
+              <button
+                onClick={() => setConfirmRemoveContact(null)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#9ca3af",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  fontWeight: 500,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={doRemoveContact}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: "rgba(239,68,68,0.75)",
+                  border: "none",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  fontWeight: 600,
+                }}
+              >
+                Sí, eliminar
+              </button>
             </div>
           </div>
         </div>

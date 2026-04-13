@@ -21,7 +21,8 @@ import {
 import { countryCodes } from "@/data/mockData";
 
 // URL del backend OTP
-const OTP_SERVICE = "https://cr4j9v-5000.csb.app";
+const OTP_SERVICE =
+  import.meta.env.VITE_OTP_SERVICE_URL || "http://localhost:5000";
 
 // Longitudes de teléfono por país
 const phoneLengths: Record<string, number> = {

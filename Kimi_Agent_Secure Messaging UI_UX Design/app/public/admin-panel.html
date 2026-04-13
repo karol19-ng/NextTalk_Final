@@ -1,1116 +1,2022 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NextTalk Admin</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
-
-  :root {
-    --bg:        #080b14;
-    --surface:   #0e1320;
-    --surface2:  #141926;
-    --border:    rgba(99,179,237,0.12);
-    --accent:    #63b3ed;
-    --accent2:   #9f7aea;
-    --accent3:   #68d391;
-    --danger:    #fc8181;
-    --warn:      #f6ad55;
-    --text:      #e2e8f0;
-    --muted:     #4a5568;
-    --muted2:    #718096;
-    --glow:      0 0 24px rgba(99,179,237,0.15);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-  /* ── Layout ── */
-  #app { display: flex; height: 100vh; }
-
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 220px; flex-shrink: 0;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    padding: 0;
-  }
-  .sidebar-logo {
-    padding: 22px 20px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .logo-icon {
-    width: 34px; height: 34px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-  }
-  .logo-text { font-size: 15px; font-weight: 800; letter-spacing: -.3px; color: #fff; }
-  .logo-badge { font-size: 9px; color: var(--accent); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; margin-top: 1px; }
-
-  .nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
-  .nav-section { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; padding: 10px 12px 6px; font-family: 'JetBrains Mono', monospace; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px; border-radius: 9px; cursor: pointer;
-    font-size: 13px; font-weight: 600; color: var(--muted2);
-    transition: all .15s; margin-bottom: 2px; border: 1px solid transparent;
-  }
-  .nav-item:hover { background: rgba(99,179,237,0.06); color: var(--text); }
-  .nav-item.active { background: rgba(99,179,237,0.1); color: var(--accent); border-color: rgba(99,179,237,0.2); }
-  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
-  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
-
-  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
-  .admin-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; background: var(--surface2); border-radius: 10px;
-    border: 1px solid var(--border);
-  }
-  .admin-avatar { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#fc8181,#9f7aea); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; }
-  .admin-info p { font-size: 12px; font-weight: 700; color: #fff; }
-  .admin-info span { font-size: 10px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
-
-  /* ── Main ── */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-  .topbar {
-    height: 56px; flex-shrink: 0;
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px;
-  }
-  .topbar-left { display: flex; align-items: center; gap: 12px; }
-  .page-title { font-size: 18px; font-weight: 800; color: #fff; }
-  .page-sub { font-size: 12px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); box-shadow: 0 0 8px var(--accent3); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.9)} }
-  .status-label { font-size: 11px; color: var(--accent3); font-family: 'JetBrains Mono', monospace; }
-
-  .content { flex: 1; overflow-y: auto; padding: 24px; }
-
-  /* ── Cards ── */
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px;
-    position: relative; overflow: hidden;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .stat-card:hover { border-color: rgba(99,179,237,0.3); box-shadow: var(--glow); }
-  .stat-card::before { content:''; position:absolute; top:0; right:0; width:80px; height:80px; border-radius:50%; opacity:.06; transform:translate(20px,-20px); }
-  .stat-card.blue::before { background: var(--accent); }
-  .stat-card.purple::before { background: var(--accent2); }
-  .stat-card.green::before { background: var(--accent3); }
-  .stat-card.red::before { background: var(--danger); }
-  .stat-card.orange::before { background: var(--warn); }
-  .stat-icon { font-size: 22px; margin-bottom: 10px; }
-  .stat-val { font-size: 28px; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-  .stat-label { font-size: 12px; color: var(--muted2); margin-top: 4px; }
-  .stat-trend { font-size: 11px; color: var(--accent3); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
-
-  /* ── Tables ── */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; overflow: hidden; margin-bottom: 20px;
-  }
-  .card-header {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .card-title { font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
-  .card-count { font-size: 11px; color: var(--accent); background: rgba(99,179,237,0.1); padding: 2px 8px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
-  .card-actions { display: flex; gap: 8px; }
-
-  .search-box {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 9px; padding: 6px 12px;
-  }
-  .search-box input { background: none; border: none; outline: none; color: var(--text); font-size: 13px; font-family: 'Syne', sans-serif; width: 180px; }
-  .search-box input::placeholder { color: var(--muted); }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { font-size: 10px; color: var(--muted); letter-spacing: 1px; font-family: 'JetBrains Mono', monospace; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
-  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-
-  .user-cell { display: flex; align-items: center; gap: 10px; }
-  .avatar { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-  .avatar-placeholder { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0; }
-  .user-name { font-weight: 600; color: #fff; font-size: 13px; }
-  .user-phone { font-size: 11px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; }
-
-  /* ── Badges ── */
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-  .badge-green { background: rgba(104,211,145,0.12); color: var(--accent3); border: 1px solid rgba(104,211,145,0.2); }
-  .badge-gray { background: rgba(113,128,150,0.15); color: var(--muted2); border: 1px solid rgba(113,128,150,0.2); }
-  .badge-red { background: rgba(252,129,129,0.12); color: var(--danger); border: 1px solid rgba(252,129,129,0.2); }
-  .badge-blue { background: rgba(99,179,237,0.12); color: var(--accent); border: 1px solid rgba(99,179,237,0.2); }
-  .badge-orange { background: rgba(246,173,85,0.12); color: var(--warn); border: 1px solid rgba(246,173,85,0.2); }
-  .badge-purple { background: rgba(159,122,234,0.12); color: var(--accent2); border: 1px solid rgba(159,122,234,0.2); }
-
-  /* ── Buttons ── */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: all .15s; font-family: 'Syne', sans-serif; }
-  .btn-sm { padding: 5px 10px; font-size: 11px; }
-  .btn-primary { background: rgba(99,179,237,0.15); color: var(--accent); border-color: rgba(99,179,237,0.3); }
-  .btn-primary:hover { background: rgba(99,179,237,0.25); }
-  .btn-danger { background: rgba(252,129,129,0.12); color: var(--danger); border-color: rgba(252,129,129,0.25); }
-  .btn-danger:hover { background: rgba(252,129,129,0.22); }
-  .btn-warn { background: rgba(246,173,85,0.12); color: var(--warn); border-color: rgba(246,173,85,0.25); }
-  .btn-warn:hover { background: rgba(246,173,85,0.22); }
-  .btn-ghost { background: var(--surface2); color: var(--muted2); border-color: var(--border); }
-  .btn-ghost:hover { color: var(--text); }
-
-  /* ── Modal ── */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; animation: fadeIn .15s; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px; width:100%; max-width:480px; box-shadow: 0 24px 60px rgba(0,0,0,.6); animation: slideUp .2s; }
-  @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-  .modal-title { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
-  .modal-sub { font-size: 13px; color: var(--muted2); margin-bottom: 20px; line-height: 1.5; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
-
-  /* ── Login ── */
-  #login-screen { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:99999; }
-  .login-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:36px; width:360px; text-align:center; }
-  .login-logo { font-size:40px; margin-bottom:16px; }
-  .login-title { font-size:22px; font-weight:800; color:#fff; margin-bottom:6px; }
-  .login-sub { font-size:13px; color:var(--muted2); margin-bottom:28px; font-family:'JetBrains Mono',monospace; }
-  .login-input { width:100%; padding:12px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:11px; color:var(--text); font-size:14px; outline:none; margin-bottom:12px; font-family:'Syne',sans-serif; transition:border-color .15s; }
-  .login-input:focus { border-color:rgba(99,179,237,.5); }
-  .login-btn { width:100%; padding:13px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; border-radius:11px; color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:'Syne',sans-serif; transition:opacity .15s; }
-  .login-btn:hover { opacity:.9; }
-  .login-error { color:var(--danger); font-size:12px; margin-top:8px; }
-
-  /* ── Encryption section ── */
-  .enc-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .enc-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px; }
-  .enc-card h4 { font-size:13px; font-weight:700; color:#fff; margin-bottom:8px; display:flex; align-items:center; gap:7px; }
-  .enc-card p { font-size:12px; color:var(--muted2); line-height:1.6; }
-  .enc-status { display:flex; align-items:center; gap:6px; margin-top:10px; font-size:11px; color:var(--accent3); font-family:'JetBrains Mono',monospace; }
-
-  /* ── Chatbot Config ── */
-  .kb-item { background:var(--surface2); border:1px solid var(--border); border-radius:11px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:flex-start; gap:12px; }
-  .kb-keywords { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
-  .kb-kw { background:rgba(99,179,237,.1); color:var(--accent); font-size:10px; padding:2px 7px; border-radius:20px; font-family:'JetBrains Mono',monospace; border:1px solid rgba(99,179,237,.2); }
-  .kb-response-preview { font-size:12px; color:var(--muted2); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:400px; }
-  .kb-number { width:28px; height:28px; border-radius:8px; background:rgba(99,179,237,.1); border:1px solid rgba(99,179,237,.2); color:var(--accent); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
-
-  textarea.form-input, input.form-input, select.form-input {
-    width:100%; padding:10px 13px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13px; outline:none; font-family:'Syne',sans-serif; resize:vertical; transition:border-color .15s;
-  }
-  textarea.form-input:focus, input.form-input:focus { border-color:rgba(99,179,237,.4); }
-  label.form-label { font-size:11px; color:var(--muted2); letter-spacing:.5px; display:block; margin-bottom:5px; font-family:'JetBrains Mono',monospace; }
-  .form-group { margin-bottom:14px; }
-
-  .empty-state { text-align:center; padding:48px 24px; color:var(--muted); }
-  .empty-state .icon { font-size:40px; margin-bottom:12px; }
-  .empty-state p { font-size:14px; }
-
-  .loading { text-align:center; padding:40px; color:var(--muted2); font-family:'JetBrains Mono',monospace; font-size:13px; }
-  .dot-anim::after { content:'...'; animation:dots 1.2s infinite; }
-  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
-
-  .toast { position:fixed; bottom:24px; right:24px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; z-index:99999; box-shadow:0 8px 30px rgba(0,0,0,.4); animation:slideUp .2s; }
-  .toast.success { border-color:rgba(104,211,145,.3); color:var(--accent3); }
-  .toast.error { border-color:rgba(252,129,129,.3); color:var(--danger); }
-
-  .member-list { display:flex; flex-direction:column; gap:8px; }
-  .member-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface2); border-radius:10px; border:1px solid var(--border); }
-  .member-row .info { flex:1; }
-  .member-row .info p { font-size:13px; font-weight:600; color:#fff; }
-  .member-row .info span { font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; }
-
-  /* Chart bars */
-  .chart-wrap { padding:16px 20px 8px; }
-  .chart-bars { display:flex; align-items:flex-end; gap:6px; height:80px; }
-  .chart-bar { flex:1; border-radius:4px 4px 0 0; background:rgba(99,179,237,.3); transition:background .15s; position:relative; min-width:0; }
-  .chart-bar:hover { background:rgba(99,179,237,.6); }
-  .chart-bar .tip { position:absolute; top:-22px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent); font-family:'JetBrains Mono',monospace; white-space:nowrap; opacity:0; transition:opacity .15s; }
-  .chart-bar:hover .tip { opacity:1; }
-  .chart-labels { display:flex; gap:6px; margin-top:6px; }
-  .chart-label { flex:1; font-size:9px; color:var(--muted); text-align:center; font-family:'JetBrains Mono',monospace; overflow:hidden; }
-</style>
-</head>
-<body>
-
-<!-- Login -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">🛡️</div>
-    <div class="login-title">NextTalk Admin</div>
-    <div class="login-sub">Panel de Control · v2.0</div>
-    <input class="login-input" type="password" id="admin-key-input" placeholder="Clave de administrador" />
-    <button class="login-btn" onclick="doLogin()">Acceder</button>
-    <div class="login-error" id="login-error"></div>
-  </div>
-</div>
-
-<div id="app" style="display:none">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">🛡️</div>
-      <div>
-        <div class="logo-text">NextTalk</div>
-        <div class="logo-badge">ADMIN PANEL</div>
-      </div>
-    </div>
-    <div class="nav">
-      <div class="nav-section">GENERAL</div>
-      <div class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard">
-        <span class="icon">📊</span> Dashboard
-      </div>
-      <div class="nav-section">GESTIÓN</div>
-      <div class="nav-item" onclick="navigate('users')" id="nav-users">
-        <span class="icon">👥</span> Usuarios
-        <span class="nav-badge" id="badge-users">0</span>
-      </div>
-      <div class="nav-item" onclick="navigate('groups')" id="nav-groups">
-        <span class="icon">💬</span> Grupos
-        <span class="nav-badge" id="badge-groups" style="background:var(--accent2)">0</span>
-      </div>
-      <div class="nav-item" onclick="navigate('sanctions')" id="nav-sanctions">
-        <span class="icon">⚠️</span> Sanciones
-        <span class="nav-badge" id="badge-sanctions" style="background:var(--warn)">0</span>
-      </div>
-      <div class="nav-section">SISTEMA</div>
-      <div class="nav-item" onclick="navigate('encryption')" id="nav-encryption">
-        <span class="icon">🔐</span> Cifrado E2E
-      </div>
-      <div class="nav-item" onclick="navigate('chatbot')" id="nav-chatbot">
-        <span class="icon">🤖</span> Chatbot IA
-      </div>
-    </div>
-    <div class="sidebar-footer">
-      <div class="admin-chip">
-        <div class="admin-avatar">A</div>
-        <div class="admin-info">
-          <p>Administrador</p>
-          <span>ROOT ACCESS</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NextTalk Admin</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap");
+      :root {
+        --bg: #080b14;
+        --surface: #0e1320;
+        --surface2: #141926;
+        --border: rgba(99, 179, 237, 0.12);
+        --accent: #63b3ed;
+        --accent2: #9f7aea;
+        --accent3: #68d391;
+        --danger: #fc8181;
+        --warn: #f6ad55;
+        --text: #e2e8f0;
+        --muted: #4a5568;
+        --muted2: #718096;
+        --glow: 0 0 24px rgba(99, 179, 237, 0.15);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+        font-family: "Syne", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+      }
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+      #app {
+        display: flex;
+        height: 100vh;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+      }
+      .sidebar-logo {
+        padding: 22px 20px 18px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .logo-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+      }
+      .logo-text {
+        font-size: 15px;
+        font-weight: 800;
+        color: #fff;
+      }
+      .logo-badge {
+        font-size: 9px;
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+        letter-spacing: 1px;
+        margin-top: 1px;
+      }
+      .nav {
+        flex: 1;
+        padding: 12px 8px;
+        overflow-y: auto;
+      }
+      .nav-section {
+        font-size: 9px;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        padding: 10px 12px 6px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-radius: 9px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted2);
+        transition: all 0.15s;
+        margin-bottom: 2px;
+        border: 1px solid transparent;
+      }
+      .nav-item:hover {
+        background: rgba(99, 179, 237, 0.06);
+        color: var(--text);
+      }
+      .nav-item.active {
+        background: rgba(99, 179, 237, 0.1);
+        color: var(--accent);
+        border-color: rgba(99, 179, 237, 0.2);
+      }
+      .nav-item .icon {
+        font-size: 16px;
+        width: 20px;
+        text-align: center;
+      }
+      .nav-badge {
+        margin-left: auto;
+        background: var(--danger);
+        color: #fff;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 20px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .sidebar-footer {
+        padding: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .admin-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        background: var(--surface2);
+        border-radius: 10px;
+        border: 1px solid var(--border);
+      }
+      .admin-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #fc8181, #9f7aea);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .admin-info p {
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .admin-info span {
+        font-size: 10px;
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .topbar {
+        height: 56px;
+        flex-shrink: 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+      }
+      .page-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+      }
+      .page-sub {
+        font-size: 12px;
+        color: var(--muted2);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent3);
+        box-shadow: 0 0 8px var(--accent3);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.6;
+          transform: scale(0.9);
+        }
+      }
+      .status-label {
+        font-size: 11px;
+        color: var(--accent3);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .stat-card:hover {
+        border-color: rgba(99, 179, 237, 0.3);
+        box-shadow: var(--glow);
+      }
+      .stat-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        opacity: 0.06;
+        transform: translate(20px, -20px);
+      }
+      .stat-card.blue::before {
+        background: var(--accent);
+      }
+      .stat-card.purple::before {
+        background: var(--accent2);
+      }
+      .stat-card.green::before {
+        background: var(--accent3);
+      }
+      .stat-card.red::before {
+        background: var(--danger);
+      }
+      .stat-card.orange::before {
+        background: var(--warn);
+      }
+      .stat-icon {
+        font-size: 22px;
+        margin-bottom: 10px;
+      }
+      .stat-val {
+        font-size: 28px;
+        font-weight: 800;
+        color: #fff;
+        font-family: "JetBrains Mono", monospace;
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 12px;
+        color: var(--muted2);
+        margin-top: 4px;
+      }
+      .stat-trend {
+        font-size: 11px;
+        color: var(--accent3);
+        margin-top: 6px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+      .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .card-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .card-count {
+        font-size: 11px;
+        color: var(--accent);
+        background: rgba(99, 179, 237, 0.1);
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .card-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 6px 12px;
+      }
+      .search-box input {
+        background: none;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-size: 13px;
+        font-family: "Syne", sans-serif;
+        width: 200px;
+      }
+      .search-box input::placeholder {
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 1px;
+        font-family: "JetBrains Mono", monospace;
+        padding: 10px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface2);
+      }
+      td {
+        padding: 12px 16px;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        vertical-align: middle;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+      .avatar-ph {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        color: #fff;
+        flex-shrink: 0;
+      }
+      .user-name {
+        font-weight: 600;
+        color: #fff;
+        font-size: 13px;
+      }
+      .user-phone {
+        font-size: 11px;
+        color: var(--muted2);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .bg {
+        background: rgba(104, 211, 145, 0.12);
+        color: var(--accent3);
+        border: 1px solid rgba(104, 211, 145, 0.2);
+      }
+      .bb {
+        background: rgba(99, 179, 237, 0.12);
+        color: var(--accent);
+        border: 1px solid rgba(99, 179, 237, 0.2);
+      }
+      .br {
+        background: rgba(252, 129, 129, 0.12);
+        color: var(--danger);
+        border: 1px solid rgba(252, 129, 129, 0.2);
+      }
+      .bo {
+        background: rgba(246, 173, 85, 0.12);
+        color: var(--warn);
+        border: 1px solid rgba(246, 173, 85, 0.2);
+      }
+      .bp {
+        background: rgba(159, 122, 234, 0.12);
+        color: var(--accent2);
+        border: 1px solid rgba(159, 122, 234, 0.2);
+      }
+      .bgr {
+        background: rgba(113, 128, 150, 0.15);
+        color: var(--muted2);
+        border: 1px solid rgba(113, 128, 150, 0.2);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+        font-family: "Syne", sans-serif;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+      .btn-p {
+        background: rgba(99, 179, 237, 0.15);
+        color: var(--accent);
+        border-color: rgba(99, 179, 237, 0.3);
+      }
+      .btn-p:hover {
+        background: rgba(99, 179, 237, 0.25);
+      }
+      .btn-d {
+        background: rgba(252, 129, 129, 0.12);
+        color: var(--danger);
+        border-color: rgba(252, 129, 129, 0.25);
+      }
+      .btn-d:hover {
+        background: rgba(252, 129, 129, 0.22);
+      }
+      .btn-w {
+        background: rgba(246, 173, 85, 0.12);
+        color: var(--warn);
+        border-color: rgba(246, 173, 85, 0.25);
+      }
+      .btn-w:hover {
+        background: rgba(246, 173, 85, 0.22);
+      }
+      .btn-g {
+        background: var(--surface2);
+        color: var(--muted2);
+        border-color: var(--border);
+      }
+      .btn-g:hover {
+        color: var(--text);
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fi 0.15s;
+      }
+      @keyframes fi {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 28px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        animation: su 0.2s;
+      }
+      @keyframes su {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .modal-title {
+        font-size: 17px;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .modal-sub {
+        font-size: 13px;
+        color: var(--muted2);
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 22px;
+      }
+      #login-screen {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+      }
+      .login-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 36px;
+        width: 380px;
+        text-align: center;
+      }
+      .login-logo {
+        font-size: 40px;
+        margin-bottom: 16px;
+      }
+      .login-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 6px;
+      }
+      .login-sub {
+        font-size: 13px;
+        color: var(--muted2);
+        margin-bottom: 28px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .login-input {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        color: var(--text);
+        font-size: 14px;
+        outline: none;
+        margin-bottom: 10px;
+        font-family: "Syne", sans-serif;
+        transition: border-color 0.15s;
+        text-align: left;
+      }
+      .login-input:focus {
+        border-color: rgba(99, 179, 237, 0.5);
+      }
+      .login-label {
+        font-size: 11px;
+        color: var(--muted2);
+        text-align: left;
+        display: block;
+        margin-bottom: 4px;
+        font-family: "JetBrains Mono", monospace;
+        letter-spacing: 0.5px;
+      }
+      .login-btn {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        border: none;
+        border-radius: 11px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: "Syne", sans-serif;
+        transition: opacity 0.15s;
+        margin-top: 4px;
+      }
+      .login-btn:hover {
+        opacity: 0.9;
+      }
+      .login-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .login-error {
+        color: var(--danger);
+        font-size: 12px;
+        margin-top: 10px;
+        min-height: 18px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .login-hint {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+      .enc-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .enc-card {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+      }
+      .enc-card h4 {
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+      }
+      .enc-card p {
+        font-size: 12px;
+        color: var(--muted2);
+        line-height: 1.6;
+      }
+      .enc-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--accent3);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .kb-item {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .kb-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+      }
+      .kb-kw {
+        background: rgba(99, 179, 237, 0.1);
+        color: var(--accent);
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-family: "JetBrains Mono", monospace;
+        border: 1px solid rgba(99, 179, 237, 0.2);
+      }
+      .kb-preview {
+        font-size: 12px;
+        color: var(--muted2);
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 380px;
+      }
+      .kb-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: rgba(99, 179, 237, 0.1);
+        border: 1px solid rgba(99, 179, 237, 0.2);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .fi {
+        width: 100%;
+        padding: 10px 13px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+        font-family: "Syne", sans-serif;
+        resize: vertical;
+        transition: border-color 0.15s;
+      }
+      .fi:focus {
+        border-color: rgba(99, 179, 237, 0.4);
+      }
+      .fl {
+        font-size: 11px;
+        color: var(--muted2);
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 5px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .fg {
+        margin-bottom: 14px;
+      }
+      .member-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: var(--surface2);
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        margin-bottom: 8px;
+      }
+      .empty {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--muted);
+      }
+      .empty .icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+      }
+      .empty p {
+        font-size: 14px;
+      }
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--muted2);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+      }
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 99999;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        animation: su 0.2s;
+      }
+      .toast.ok {
+        border-color: rgba(104, 211, 145, 0.3);
+        color: var(--accent3);
+      }
+      .toast.err {
+        border-color: rgba(252, 129, 129, 0.3);
+        color: var(--danger);
+      }
+      .chart-wrap {
+        padding: 16px 20px 8px;
+      }
+      .chart-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 80px;
+      }
+      .chart-bar {
+        flex: 1;
+        border-radius: 4px 4px 0 0;
+        background: rgba(99, 179, 237, 0.3);
+        position: relative;
+        min-width: 0;
+        transition: background 0.15s;
+      }
+      .chart-bar:hover {
+        background: rgba(99, 179, 237, 0.6);
+      }
+      .chart-bar .tip {
+        position: absolute;
+        top: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .chart-bar:hover .tip {
+        opacity: 1;
+      }
+      .chart-labels {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .chart-label {
+        flex: 1;
+        font-size: 9px;
+        color: var(--muted);
+        text-align: center;
+        font-family: "JetBrains Mono", monospace;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <div id="login-screen">
+      <div class="login-card">
+        <div class="login-logo">🛡️</div>
+        <div class="login-title">NextTalk Admin</div>
+        <div class="login-sub">Panel de Control v2.0</div>
+        <label class="login-label">URL DEL BACKEND (otp-service)</label>
+        <input
+          class="login-input"
+          id="inp-url"
+          type="text"
+          placeholder="https://cr4j9v-5000.csb.app"
+        />
+        <label class="login-label">CLAVE DE ADMINISTRADOR</label>
+        <input
+          class="login-input"
+          id="inp-key"
+          type="password"
+          placeholder="nexttalk-admin-2025"
+        />
+        <button class="login-btn" id="login-btn" onclick="doLogin()">
+          Acceder al Panel
+        </button>
+        <div class="login-error" id="login-error"></div>
+        <div class="login-hint">
+          La URL es la de tu otp-service (puerto 5000).<br />
+          Clave por defecto:
+          <strong style="color: var(--accent)">nexttalk-admin-2025</strong>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Main -->
-  <div class="main">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div>
-          <div class="page-title" id="page-title">Dashboard</div>
-          <div class="page-sub" id="page-sub">Resumen general del sistema</div>
+    <!-- APP -->
+    <div id="app" style="display: none">
+      <div class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-icon">🛡️</div>
+          <div>
+            <div class="logo-text">NextTalk</div>
+            <div class="logo-badge">ADMIN PANEL</div>
+          </div>
+        </div>
+        <div class="nav">
+          <div class="nav-section">GENERAL</div>
+          <div
+            class="nav-item active"
+            onclick="go('dashboard')"
+            id="nav-dashboard"
+          >
+            <span class="icon">📊</span>Dashboard
+          </div>
+          <div class="nav-section">GESTIÓN</div>
+          <div class="nav-item" onclick="go('users')" id="nav-users">
+            <span class="icon">👥</span>Usuarios<span
+              class="nav-badge"
+              id="b-users"
+              >0</span
+            >
+          </div>
+          <div class="nav-item" onclick="go('groups')" id="nav-groups">
+            <span class="icon">💬</span>Grupos<span
+              class="nav-badge"
+              id="b-groups"
+              style="background: var(--accent2)"
+              >0</span
+            >
+          </div>
+          <div class="nav-item" onclick="go('sanctions')" id="nav-sanctions">
+            <span class="icon">⚠️</span>Sanciones<span
+              class="nav-badge"
+              id="b-sanc"
+              style="background: var(--warn)"
+              >0</span
+            >
+          </div>
+          <div class="nav-section">SISTEMA</div>
+          <div class="nav-item" onclick="go('encryption')" id="nav-encryption">
+            <span class="icon">🔐</span>Cifrado E2E
+          </div>
+          <div class="nav-item" onclick="go('chatbot')" id="nav-chatbot">
+            <span class="icon">🤖</span>Chatbot IA
+          </div>
+        </div>
+        <div class="sidebar-footer">
+          <div class="admin-chip">
+            <div class="admin-avatar">A</div>
+            <div class="admin-info">
+              <p>Administrador</p>
+              <span>ROOT ACCESS</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="topbar-right">
-        <div class="status-dot"></div>
-        <span class="status-label">SISTEMA ACTIVO</span>
-        <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Actualizar</button>
+
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <div class="page-title" id="p-title">Dashboard</div>
+            <div class="page-sub" id="p-sub">Resumen general del sistema</div>
+          </div>
+          <div class="topbar-right">
+            <div class="status-dot"></div>
+            <span class="status-label">SISTEMA ACTIVO</span>
+            <button class="btn btn-g btn-sm" onclick="loadAll()">
+              ↻ Actualizar
+            </button>
+            <button class="btn btn-d btn-sm" onclick="signOut()">Salir</button>
+          </div>
+        </div>
+        <div class="content" id="content">
+          <div class="loading">Conectando al servidor...</div>
+        </div>
       </div>
     </div>
-    <div class="content" id="content">
-      <div class="loading"><span class="dot-anim">Cargando</span></div>
+
+    <div
+      class="modal-overlay"
+      id="modal"
+      style="display: none"
+      onclick="if(event.target===this)closeModal()"
+    >
+      <div class="modal" id="modal-inner"></div>
     </div>
-  </div>
-</div>
+    <div class="toast" id="toast" style="display: none"></div>
 
-<!-- Modal genérico -->
-<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal(event)">
-  <div class="modal" id="modal-inner"></div>
-</div>
+    <script>
+      // ── State ──────────────────────────────────────────────────────────────────────
+      let API = "";
+      let KEY = "";
+      let page = "dashboard";
+      let users = [],
+        groups = [],
+        stats = {};
+      let sanctions = JSON.parse(localStorage.getItem("nt_sanctions") || "{}");
+      let kb = JSON.parse(localStorage.getItem("nt_kb") || "null") || [
+        {
+          id: 1,
+          keywords: ["cifrado", "e2e", "encriptación", "extremo"],
+          response:
+            "🔒 **Cifrado E2E**\n\nTus mensajes solo los pueden leer tú y tu contacto. El servidor nunca ve el contenido.",
+        },
+        {
+          id: 2,
+          keywords: ["dos pasos", "2fa", "otp", "código", "verificación"],
+          response:
+            "🔐 **Verificación en dos pasos**\n\nProtege tu cuenta con un código adicional al iniciar sesión.",
+        },
+        {
+          id: 3,
+          keywords: ["privacidad", "proteger", "datos"],
+          response:
+            "🛡️ **Privacidad**\n\nUsa apps con E2E, activa 2FA y revisa los permisos de la app.",
+        },
+        {
+          id: 4,
+          keywords: ["contraseña", "password", "clave", "pin"],
+          response:
+            "🔑 **Contraseñas seguras**\n\nUsa al menos 12 caracteres combinando letras, números y símbolos.",
+        },
+        {
+          id: 5,
+          keywords: ["spam", "estafa", "phishing", "fraude"],
+          response:
+            "⚠️ **Estafas**\n\nNunca hagas clic en enlaces de extraños. Bloquea contactos sospechosos.",
+        },
+        {
+          id: 6,
+          keywords: ["bloquear", "reportar", "denunciar"],
+          response:
+            "🚫 **Bloquear/Reportar**\n\nToca ⋮ junto al chat → Bloquear o Reportar.",
+        },
+        {
+          id: 7,
+          keywords: ["grupo", "grupos", "miembros"],
+          response:
+            "👥 **Grupos**\n\nCrea grupos con tus contactos. Los mensajes grupales también están cifrados.",
+        },
+        {
+          id: 8,
+          keywords: ["wifi", "vpn", "red"],
+          response:
+            "📡 **WiFi pública**\n\nUsa VPN en redes públicas. SecureChat cifra tus mensajes de todas formas.",
+        },
+        {
+          id: 9,
+          keywords: ["hola", "buenos", "hey", "hi"],
+          response:
+            "👋 ¡Hola! Soy el asistente de SecureChat. ¿En qué te puedo ayudar?",
+        },
+        {
+          id: 10,
+          keywords: ["gracias", "perfecto", "genial", "ok"],
+          response: "😊 ¡De nada! Si tienes más dudas, aquí estaré.",
+        },
+      ];
+      function saveKB() {
+        localStorage.setItem("nt_kb", JSON.stringify(kb));
+      }
+      function saveSanctions() {
+        localStorage.setItem("nt_sanctions", JSON.stringify(sanctions));
+      }
 
-<!-- Toast -->
-<div class="toast" id="toast" style="display:none"></div>
+      // ── Login ──────────────────────────────────────────────────────────────────────
+      window.addEventListener("DOMContentLoaded", () => {
+        const savedUrl = localStorage.getItem("nt_api");
+        if (savedUrl) document.getElementById("inp-url").value = savedUrl;
+        document.getElementById("inp-key").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") doLogin();
+        });
+        document.getElementById("inp-url").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") document.getElementById("inp-key").focus();
+        });
+      });
 
-<script>
-const API = (localStorage.getItem('admin_api') || 'https://cr4j9v-5000.csb.app');
-let ADMIN_KEY = '';
-let currentPage = 'dashboard';
-let allUsers = [];
-let allGroups = [];
-let stats = {};
+      async function doLogin() {
+        const url = document
+          .getElementById("inp-url")
+          .value.trim()
+          .replace(/\/+$/, "");
+        const key = document.getElementById("inp-key").value.trim();
+        const err = document.getElementById("login-error");
+        const btn = document.getElementById("login-btn");
+        err.textContent = "";
+        if (!url) {
+          err.textContent = "⚠️ Ingresa la URL del backend";
+          return;
+        }
+        if (!key) {
+          err.textContent = "⚠️ Ingresa la clave de administrador";
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Verificando...";
+        try {
+          const r = await fetch(`${url}/api/admin/stats`, {
+            headers: { "x-admin-key": key, "Content-Type": "application/json" },
+          });
+          if (r.status === 401) {
+            err.textContent = "❌ Clave incorrecta";
+            btn.disabled = false;
+            btn.textContent = "Acceder al Panel";
+            return;
+          }
+          if (!r.ok) {
+            err.textContent = `❌ Error del servidor: ${r.status}`;
+            btn.disabled = false;
+            btn.textContent = "Acceder al Panel";
+            return;
+          }
+          const data = await r.json();
+          API = url;
+          KEY = key;
+          localStorage.setItem("nt_api", url);
+          stats = data;
+          document.getElementById("login-screen").style.display = "none";
+          document.getElementById("app").style.display = "flex";
+          loadAll();
+        } catch (e) {
+          err.textContent =
+            "❌ No se pudo conectar. Verifica que el backend esté corriendo y la URL sea correcta.";
+          btn.disabled = false;
+          btn.textContent = "Acceder al Panel";
+        }
+      }
 
-// ── Chatbot KB (misma que AIChatbotView) ─────────────────────────────────────
-let chatbotKB = JSON.parse(localStorage.getItem('admin_chatbot_kb') || 'null') || [
-  { id: 1, keywords: ['cifrado','extremo a extremo','e2e','encriptación'], response: '🔒 **Cifrado extremo a extremo (E2E)**\n\nEl cifrado E2E garantiza que tus mensajes solo puedan leerlos tú y la persona con quien chateas.' },
-  { id: 2, keywords: ['dos pasos','2fa','doble factor','otp','código'], response: '🔐 **Verificación en dos pasos (2FA)**\n\nEs una capa extra de seguridad que protege tu cuenta aunque alguien robe tu contraseña.' },
-  { id: 3, keywords: ['privacidad','proteger','datos personales'], response: '🛡️ **Cómo proteger tu privacidad**\n\nUsa apps con cifrado E2E, activa 2FA y revisa los permisos de la app.' },
-  { id: 4, keywords: ['contraseña','password','segura','clave'], response: '🔑 **Contraseñas seguras**\n\nUsa al menos 12 caracteres, combina letras, números y símbolos.' },
-  { id: 5, keywords: ['spam','estafa','phishing','fraude','scam'], response: '⚠️ **Cómo evitar estafas**\n\nNunca hagas clic en enlaces de extraños. Bloquea y reporta contactos sospechosos.' },
-  { id: 6, keywords: ['bloquear','reportar','denunciar'], response: '🚫 **Bloquear y reportar**\n\nToca ⋮ junto al chat y selecciona Bloquear o Reportar.' },
-  { id: 7, keywords: ['grupo','crear grupo','miembros'], response: '👥 **Grupos en SecureChat**\n\nPuedes crear grupos para chatear con varias personas con cifrado E2E.' },
-  { id: 8, keywords: ['wifi','vpn','red publica'], response: '📡 **Seguridad WiFi pública**\n\nUsa VPN en redes públicas. SecureChat cifra tus mensajes aunque estés en WiFi pública.' },
-];
+      function signOut() {
+        document.getElementById("app").style.display = "none";
+        document.getElementById("login-screen").style.display = "flex";
+        document.getElementById("inp-key").value = "";
+        document.getElementById("login-error").textContent = "";
+      }
 
-function saveKB() { localStorage.setItem('admin_chatbot_kb', JSON.stringify(chatbotKB)); }
+      // ── API ────────────────────────────────────────────────────────────────────────
+      async function api(path, opts = {}) {
+        const r = await fetch(`${API}${path}`, {
+          ...opts,
+          headers: {
+            "x-admin-key": KEY,
+            "Content-Type": "application/json",
+            ...(opts.headers || {}),
+          },
+          body: opts.body
+            ? typeof opts.body === "string"
+              ? opts.body
+              : JSON.stringify(opts.body)
+            : undefined,
+        });
+        return r.json();
+      }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-function doLogin() {
-  const key = document.getElementById('admin-key-input').value;
-  if (!key) return;
-  ADMIN_KEY = key;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  refreshAll();
-}
-document.getElementById('admin-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+      async function loadAll() {
+        try {
+          const [s, u, g] = await Promise.all([
+            api("/api/admin/stats"),
+            api("/api/admin/users"),
+            api("/api/admin/groups"),
+          ]);
+          stats = s;
+          users = u.users || [];
+          groups = g.groups || [];
+          document.getElementById("b-users").textContent = users.length;
+          document.getElementById("b-groups").textContent = groups.length;
+          const sc = Object.keys(sanctions).filter((id) =>
+            users.find((u) => u._id === id)
+          ).length;
+          document.getElementById("b-sanc").textContent = sc;
+          render();
+        } catch (e) {
+          toast("Error conectando al servidor", "err");
+          render();
+        }
+      }
 
-// ── API helper ────────────────────────────────────────────────────────────────
-async function api(path, options = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: { 'x-admin-key': ADMIN_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) },
-    body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
-  });
-  return res.json();
-}
+      // ── Nav ────────────────────────────────────────────────────────────────────────
+      const titles = {
+        dashboard: "Dashboard",
+        users: "Usuarios",
+        groups: "Grupos",
+        sanctions: "Sanciones",
+        encryption: "Cifrado E2E",
+        chatbot: "Chatbot IA",
+      };
+      const subs = {
+        dashboard: "Resumen general del sistema",
+        users: "Control de cuentas registradas",
+        groups: "Grupos y roles de miembros",
+        sanctions: "Gestión de reportes y sanciones",
+        encryption: "Estado del cifrado extremo a extremo",
+        chatbot: "Configuración de respuestas del asistente",
+      };
+      function go(p) {
+        page = p;
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((el) => el.classList.remove("active"));
+        const n = document.getElementById("nav-" + p);
+        if (n) n.classList.add("active");
+        document.getElementById("p-title").textContent = titles[p] || p;
+        document.getElementById("p-sub").textContent = subs[p] || "";
+        render();
+      }
+      function render() {
+        const el = document.getElementById("content");
+        if (page === "dashboard") el.innerHTML = rDashboard();
+        else if (page === "users") el.innerHTML = rUsers();
+        else if (page === "groups") el.innerHTML = rGroups();
+        else if (page === "sanctions") el.innerHTML = rSanctions();
+        else if (page === "encryption") el.innerHTML = rEncryption();
+        else if (page === "chatbot") el.innerHTML = rChatbot();
+      }
 
-// ── Data loading ──────────────────────────────────────────────────────────────
-async function refreshAll() {
-  try {
-    const [s, u, g] = await Promise.all([
-      api('/api/admin/stats'),
-      api('/api/admin/users'),
-      api('/api/admin/groups'),
-    ]);
-    stats = s;
-    allUsers = u.users || [];
-    allGroups = g.groups || [];
-    document.getElementById('badge-users').textContent = allUsers.length;
-    document.getElementById('badge-groups').textContent = allGroups.length;
-    render();
-  } catch (err) {
-    showToast('Error conectando al servidor', 'error');
-    render();
-  }
-}
+      // ── Helpers ────────────────────────────────────────────────────────────────────
+      const COLORS = [
+        "#63b3ed",
+        "#9f7aea",
+        "#68d391",
+        "#fc8181",
+        "#f6ad55",
+        "#76e4f7",
+      ];
+      function avColor(s) {
+        return COLORS[(s || "").charCodeAt(0) % COLORS.length];
+      }
+      function avHtml(u, sz = 34) {
+        const c = avColor(u.name || u.phone || "");
+        const in2 = (u.name || u.phone || "?")
+          .trim()
+          .split(" ")
+          .map((w) => w[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+        if (u.avatar)
+          return `<img class="avatar" src="${u.avatar}" style="width:${sz}px;height:${sz}px" onerror="this.outerHTML=\`<div class='avatar-ph' style='width:${sz}px;height:${sz}px;background:${c}22;border:1px solid ${c}44;color:${c}'>${in2}</div>\`"/>`;
+        return `<div class="avatar-ph" style="width:${sz}px;height:${sz}px;background:${c}22;border:1px solid ${c}44;color:${c};font-size:${
+          sz > 34 ? 15 : 12
+        }px">${in2}</div>`;
+      }
+      function fDate(d) {
+        if (!d) return "—";
+        return new Date(d).toLocaleDateString("es-ES", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+      function fTime(d) {
+        if (!d) return "—";
+        const diff = (Date.now() - new Date(d)) / 1000;
+        if (diff < 60) return "Ahora mismo";
+        if (diff < 3600) return `Hace ${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
+        return fDate(d);
+      }
+      let uSearch = "",
+        gSearch = "";
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-const pages = { dashboard:'Dashboard', users:'Usuarios', groups:'Grupos', sanctions:'Sanciones', encryption:'Cifrado E2E', chatbot:'Chatbot IA' };
-const subs = { dashboard:'Resumen general del sistema', users:'Control de cuentas registradas', groups:'Grupos y roles de miembros', sanctions:'Gestión de reportes y sanciones', encryption:'Estado del cifrado extremo a extremo', chatbot:'Configuración de respuestas del asistente' };
-
-function navigate(page) {
-  currentPage = page;
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  const nav = document.getElementById('nav-' + page);
-  if (nav) nav.classList.add('active');
-  document.getElementById('page-title').textContent = pages[page] || page;
-  document.getElementById('page-sub').textContent = subs[page] || '';
-  render();
-}
-
-function render() {
-  const el = document.getElementById('content');
-  switch (currentPage) {
-    case 'dashboard':   el.innerHTML = renderDashboard(); break;
-    case 'users':       el.innerHTML = renderUsers(); break;
-    case 'groups':      el.innerHTML = renderGroups(); break;
-    case 'sanctions':   el.innerHTML = renderSanctions(); break;
-    case 'encryption':  el.innerHTML = renderEncryption(); break;
-    case 'chatbot':     el.innerHTML = renderChatbot(); break;
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function avatarHtml(user, size=34) {
-  const colors = ['#63b3ed','#9f7aea','#68d391','#fc8181','#f6ad55','#76e4f7'];
-  const color = colors[(user.name||user.phone||'').charCodeAt(0) % colors.length];
-  const initials = (user.name||user.phone||'?').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  if (user.avatar) return `<img class="avatar" src="${user.avatar}" style="width:${size}px;height:${size}px;border-radius:10px" onerror="this.style.display='none'"/>`;
-  return `<div class="avatar-placeholder" style="width:${size}px;height:${size}px;background:${color}22;border:1px solid ${color}44;color:${color};font-size:${size>34?15:12}px">${initials}</div>`;
-}
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
-}
-function fmtTime(d) {
-  if (!d) return '—';
-  const dt = new Date(d);
-  const now = new Date();
-  const diff = (now - dt) / 1000;
-  if (diff < 60) return 'Ahora mismo';
-  if (diff < 3600) return `Hace ${Math.floor(diff/60)}m`;
-  if (diff < 86400) return `Hace ${Math.floor(diff/3600)}h`;
-  return fmtDate(d);
-}
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-function renderDashboard() {
-  const online = stats.onlineUsers || 0;
-  const total = stats.totalUsers || allUsers.length;
-  const groups = stats.totalGroups || allGroups.length;
-  const msgs = stats.totalMessages || 0;
-  const chats = stats.totalChats || 0;
-  const newToday = stats.newUsersToday || 0;
-  const chart = stats.messagesChart || [];
-  const maxVal = Math.max(...chart.map(d=>d.count), 1);
-
-  const chartBars = chart.length ? chart.map(d => {
-    const h = Math.max(4, Math.round((d.count / maxVal) * 76));
-    const label = d._id ? d._id.slice(5) : '';
-    return `<div class="chart-bar" style="height:${h}px"><span class="tip">${d.count}</span></div>`;
-  }).join('') : '<div style="color:var(--muted);font-size:12px;padding:20px">Sin datos aún</div>';
-
-  const chartLabels = chart.map(d => `<div class="chart-label">${d._id ? d._id.slice(5) : ''}</div>`).join('');
-
-  const recentUsers = [...allUsers].slice(0, 5);
-
-  return `
+      // ── Dashboard ──────────────────────────────────────────────────────────────────
+      function rDashboard() {
+        const online = stats.onlineUsers || 0,
+          total = stats.totalUsers || users.length;
+        const grps = stats.totalGroups || groups.length,
+          msgs = stats.totalMessages || 0;
+        const chats = stats.totalChats || 0,
+          newT = stats.newUsersToday || 0;
+        const chart = stats.messagesChart || [];
+        const maxV = Math.max(...chart.map((d) => d.count), 1);
+        const bars = chart.length
+          ? chart
+              .map((d) => {
+                const h = Math.max(4, Math.round((d.count / maxV) * 76));
+                return `<div class="chart-bar" style="height:${h}px"><span class="tip">${d.count}</span></div>`;
+              })
+              .join("")
+          : '<div style="color:var(--muted);font-size:12px;align-self:center;width:100%;text-align:center">Sin datos aún</div>';
+        const labels = chart
+          .map(
+            (d) => `<div class="chart-label">${(d._id || "").slice(5)}</div>`
+          )
+          .join("");
+        const recent = [...users].slice(0, 5);
+        return `
   <div class="stat-grid">
-    <div class="stat-card blue">
-      <div class="stat-icon">👥</div>
-      <div class="stat-val">${total}</div>
-      <div class="stat-label">Usuarios totales</div>
-      <div class="stat-trend">+${newToday} hoy</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-icon">🟢</div>
-      <div class="stat-val">${online}</div>
-      <div class="stat-label">En línea ahora</div>
-      <div class="stat-trend">${total ? Math.round(online/total*100) : 0}% del total</div>
-    </div>
-    <div class="stat-card purple">
-      <div class="stat-icon">💬</div>
-      <div class="stat-val">${groups}</div>
-      <div class="stat-label">Grupos activos</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="stat-icon">✉️</div>
-      <div class="stat-val">${msgs.toLocaleString()}</div>
-      <div class="stat-label">Mensajes totales</div>
-    </div>
-    <div class="stat-card orange">
-      <div class="stat-icon">🔗</div>
-      <div class="stat-val">${chats}</div>
-      <div class="stat-label">Chats 1-a-1</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-icon">🔒</div>
-      <div class="stat-val">E2E</div>
-      <div class="stat-label">Cifrado activo</div>
-      <div class="stat-trend">100% mensajes</div>
-    </div>
+    <div class="stat-card blue"><div class="stat-icon">👥</div><div class="stat-val">${total}</div><div class="stat-label">Usuarios totales</div><div class="stat-trend">+${newT} hoy</div></div>
+    <div class="stat-card green"><div class="stat-icon">🟢</div><div class="stat-val">${online}</div><div class="stat-label">En línea ahora</div><div class="stat-trend">${
+          total ? Math.round((online / total) * 100) : 0
+        }% del total</div></div>
+    <div class="stat-card purple"><div class="stat-icon">💬</div><div class="stat-val">${grps}</div><div class="stat-label">Grupos activos</div></div>
+    <div class="stat-card blue"><div class="stat-icon">✉️</div><div class="stat-val">${msgs.toLocaleString()}</div><div class="stat-label">Mensajes totales</div></div>
+    <div class="stat-card orange"><div class="stat-icon">🔗</div><div class="stat-val">${chats}</div><div class="stat-label">Chats 1-a-1</div></div>
+    <div class="stat-card green"><div class="stat-icon">🔒</div><div class="stat-val">E2E</div><div class="stat-label">Cifrado activo</div><div class="stat-trend">100% mensajes</div></div>
   </div>
-
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">📈 Mensajes — últimos 7 días</span>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-bars">${chartBars}</div>
-        <div class="chart-labels">${chartLabels}</div>
-      </div>
+      <div class="card-header"><span class="card-title">📈 Mensajes — últimos 7 días</span></div>
+      <div class="chart-wrap"><div class="chart-bars">${bars}</div><div class="chart-labels">${labels}</div></div>
     </div>
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">🕐 Usuarios recientes</span>
-        <span class="card-count">${recentUsers.length}</span>
-      </div>
-      ${recentUsers.length === 0 ? '<div class="empty-state"><p>Sin usuarios aún</p></div>' : `
-      <table>
-        <thead><tr><th>USUARIO</th><th>ESTADO</th><th>SE UNIÓ</th></tr></thead>
-        <tbody>
-          ${recentUsers.map(u => `
-          <tr>
-            <td><div class="user-cell">${avatarHtml(u)}<div><div class="user-name">${u.name||'Sin nombre'}</div><div class="user-phone">${u.phone}</div></div></div></td>
-            <td>${u.online ? '<span class="badge badge-green">● En línea</span>' : '<span class="badge badge-gray">○ Offline</span>'}</td>
-            <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fmtDate(u.createdAt)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`}
+      <div class="card-header"><span class="card-title">🕐 Usuarios recientes</span><span class="card-count">${
+        recent.length
+      }</span></div>
+      ${
+        recent.length === 0
+          ? '<div class="empty"><p>Sin usuarios aún</p></div>'
+          : `
+      <table><thead><tr><th>USUARIO</th><th>ESTADO</th><th>SE UNIÓ</th></tr></thead><tbody>
+      ${recent
+        .map(
+          (u) => `<tr>
+        <td><div class="user-cell">${avHtml(u)}<div><div class="user-name">${
+            u.name || "Sin nombre"
+          }</div><div class="user-phone">${u.phone}</div></div></div></td>
+        <td>${
+          u.online
+            ? '<span class="badge bg">● En línea</span>'
+            : '<span class="badge bgr">○ Offline</span>'
+        }</td>
+        <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fDate(
+          u.createdAt
+        )}</td>
+      </tr>`
+        )
+        .join("")}
+      </tbody></table>`
+      }
     </div>
   </div>`;
-}
+      }
 
-// ── Usuarios ──────────────────────────────────────────────────────────────────
-let userSearch = '';
-function renderUsers() {
-  const filtered = allUsers.filter(u =>
-    (u.name||'').toLowerCase().includes(userSearch.toLowerCase()) ||
-    (u.phone||'').includes(userSearch)
-  );
-  return `
+      // ── Usuarios ───────────────────────────────────────────────────────────────────
+      function rUsers() {
+        const f = users.filter(
+          (u) =>
+            (u.name || "").toLowerCase().includes(uSearch.toLowerCase()) ||
+            (u.phone || "").includes(uSearch)
+        );
+        return `
   <div class="card">
     <div class="card-header">
-      <span class="card-title">👥 Usuarios registrados <span class="card-count">${filtered.length}</span></span>
+      <span class="card-title">👥 Usuarios registrados <span class="card-count">${
+        f.length
+      }</span></span>
       <div class="card-actions">
-        <div class="search-box">
-          <span>🔍</span>
-          <input placeholder="Buscar por nombre o teléfono..." value="${userSearch}" oninput="userSearch=this.value;render()" />
-        </div>
+        <div class="search-box"><span>🔍</span><input placeholder="Buscar nombre o teléfono..." value="${uSearch}" oninput="uSearch=this.value;render()"/></div>
       </div>
     </div>
-    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">👤</div><p>No se encontraron usuarios</p></div>' : `
-    <table>
-      <thead><tr><th>USUARIO</th><th>TELÉFONO</th><th>ESTADO</th><th>ÚLTIMA VEZ</th><th>SE UNIÓ</th><th>MSGS</th><th>ACCIONES</th></tr></thead>
-      <tbody>
-        ${filtered.map(u => `
-        <tr>
-          <td><div class="user-cell">${avatarHtml(u)}<div class="user-name">${u.name||'Sin nombre'}</div></div></td>
-          <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--muted2)">${u.phone}</td>
-          <td>
-            ${u.status === 'banned'
-              ? '<span class="badge badge-red">🚫 Baneado</span>'
-              : u.online
-              ? '<span class="badge badge-green">● En línea</span>'
-              : '<span class="badge badge-gray">○ Offline</span>'}
-          </td>
-          <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fmtTime(u.lastSeen)}</td>
-          <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fmtDate(u.createdAt)}</td>
-          <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--accent)">${u.messages||0}</td>
-          <td>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-ghost" onclick="showUserDetail('${u._id}')">Ver</button>
-              ${u.status === 'banned'
-                ? `<button class="btn btn-sm btn-primary" onclick="banUser('${u._id}',false)">Desbanear</button>`
-                : `<button class="btn btn-sm btn-warn" onclick="banUser('${u._id}',true)">Banear</button>`}
-              <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${u._id}','${(u.name||u.phone).replace(/'/g,"\\'")}')">Eliminar</button>
-            </div>
-          </td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`}
+    ${
+      f.length === 0
+        ? '<div class="empty"><div class="icon">👤</div><p>No se encontraron usuarios</p></div>'
+        : `
+    <table><thead><tr><th>USUARIO</th><th>TELÉFONO</th><th>ESTADO</th><th>ÚLTIMA VEZ</th><th>SE UNIÓ</th><th>MSGS</th><th>ACCIONES</th></tr></thead><tbody>
+    ${f
+      .map(
+        (u) => `<tr>
+      <td><div class="user-cell">${avHtml(u)}<div class="user-name">${
+          u.name || "Sin nombre"
+        }</div></div></td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--muted2)">${
+        u.phone
+      }</td>
+      <td>${
+        u.status === "banned"
+          ? '<span class="badge br">🚫 Baneado</span>'
+          : u.online
+          ? '<span class="badge bg">● En línea</span>'
+          : '<span class="badge bgr">○ Offline</span>'
+      }</td>
+      <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fTime(
+        u.lastSeen
+      )}</td>
+      <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fDate(
+        u.createdAt
+      )}</td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--accent)">${
+        u.messages || 0
+      }</td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-g" onclick="showUser('${
+          u._id
+        }')">Ver</button>
+        ${
+          u.status === "banned"
+            ? `<button class="btn btn-sm btn-p" onclick="banUser('${u._id}',false)">Desbanear</button>`
+            : `<button class="btn btn-sm btn-w" onclick="banUser('${u._id}',true)">Banear</button>`
+        }
+        <button class="btn btn-sm btn-d" onclick="confirmDelUser('${
+          u._id
+        }','${esc(u.name || u.phone)}')">Eliminar</button>
+      </div></td>
+    </tr>`
+      )
+      .join("")}
+    </tbody></table>`
+    }
   </div>`;
-}
+      }
 
-function showUserDetail(id) {
-  const u = allUsers.find(x => x._id === id);
-  if (!u) return;
-  showModal(`
-    <div class="modal-title">${avatarHtml(u,42)} ${u.name || 'Sin nombre'}</div>
+      function showUser(id) {
+        const u = users.find((x) => x._id === id);
+        if (!u) return;
+        const rows = [
+          ["Estado", u.online ? "🟢 En línea" : "⚫ Offline"],
+          ["Se unió", fDate(u.createdAt)],
+          ["Última sesión", fTime(u.lastSeen)],
+          ["Contactos", u.contacts || 0],
+          ["Mensajes", u.messages || 0],
+          ["Chats", u.chats || 0],
+          ["Estado personal", u.status || "—"],
+          [
+            "Sanciones",
+            sanctions[id] ? `⚠️ ${sanctions[id].count}/2` : "✅ Ninguna",
+          ],
+        ];
+        showModal(`
+    <div class="modal-title">${avHtml(u, 40)} ${u.name || "Sin nombre"}</div>
     <div class="modal-sub">${u.phone}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      ${[
-        ['Estado', u.online ? '🟢 En línea' : '⚫ Offline'],
-        ['Se unió', fmtDate(u.createdAt)],
-        ['Última sesión', fmtTime(u.lastSeen)],
-        ['Contactos', u.contacts || 0],
-        ['Mensajes', u.messages || 0],
-        ['Chats', u.chats || 0],
-        ['Estado personal', u.status || '—'],
-        ['Sancionado', u.status === 'banned' ? '⚠️ Sí' : '✅ No'],
-      ].map(([k,v]) => `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:JetBrains Mono,monospace">${k}</div>
-          <div style="font-size:13px;font-weight:600;color:#fff;margin-top:3px">${v}</div>
-        </div>`).join('')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+      ${rows
+        .map(
+          ([k, v]) =>
+            `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 12px"><div style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:JetBrains Mono,monospace">${k}</div><div style="font-size:13px;font-weight:600;color:#fff;margin-top:3px">${v}</div></div>`
+        )
+        .join("")}
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cerrar</button>
-      <button class="btn btn-warn" style="flex:1" onclick="addSanction('${u._id}','${(u.name||u.phone).replace(/'/g,"\\'")}');closeModal()">+ Sanción</button>
-      <button class="btn btn-danger" style="flex:1" onclick="confirmDeleteUser('${u._id}','${(u.name||u.phone).replace(/'/g,"\\'")}');closeModal()">Eliminar</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-w" style="flex:1" onclick="addSanction('${id}','${esc(
+          u.name || u.phone
+        )}');closeModal()">+ Sanción</button>
+      <button class="btn btn-d" style="flex:1" onclick="confirmDelUser('${id}','${esc(
+          u.name || u.phone
+        )}');closeModal()">Eliminar</button>
+    </div>`);
+      }
 
-async function banUser(id, ban) {
-  try {
-    await api(`/api/admin/users/${id}/ban`, { method: 'PATCH', body: { banned: ban } });
-    const u = allUsers.find(x => x._id === id);
-    if (u) u.status = ban ? 'banned' : 'Hola, uso NextTalk';
-    render();
-    showToast(ban ? 'Usuario baneado' : 'Usuario desbaneado', 'success');
-  } catch { showToast('Error al actualizar', 'error'); }
-}
+      async function banUser(id, ban) {
+        try {
+          await api(`/api/admin/users/${id}/ban`, {
+            method: "PATCH",
+            body: { banned: ban },
+          });
+          const u = users.find((x) => x._id === id);
+          if (u) u.status = ban ? "banned" : "Hola, uso NextTalk";
+          render();
+          toast(ban ? "Usuario baneado" : "Usuario desbaneado", "ok");
+        } catch {
+          toast("Error al actualizar", "err");
+        }
+      }
 
-function confirmDeleteUser(id, name) {
-  showModal(`
+      function confirmDelUser(id, name) {
+        showModal(`
     <div class="modal-title">🗑️ Eliminar cuenta</div>
-    <div class="modal-sub">¿Estás seguro de eliminar la cuenta de <strong style="color:#fff">${name}</strong>?<br>Se borrarán todos sus mensajes, chats y datos. Esta acción es irreversible.</div>
+    <div class="modal-sub">¿Eliminar la cuenta de <strong style="color:#fff">${name}</strong>?<br>Se borrarán todos sus mensajes y datos. Irreversible.</div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-danger" style="flex:2" onclick="deleteUser('${id}')">Sí, eliminar cuenta</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-d" style="flex:2" onclick="delUser('${id}')">Sí, eliminar cuenta</button>
+    </div>`);
+      }
 
-async function deleteUser(id) {
-  closeModal();
-  try {
-    await api(`/api/admin/users/${id}`, { method: 'DELETE' });
-    allUsers = allUsers.filter(u => u._id !== id);
-    document.getElementById('badge-users').textContent = allUsers.length;
-    render();
-    showToast('Cuenta eliminada', 'success');
-  } catch { showToast('Error al eliminar', 'error'); }
-}
+      async function delUser(id) {
+        closeModal();
+        try {
+          await api(`/api/admin/users/${id}`, { method: "DELETE" });
+          users = users.filter((u) => u._id !== id);
+          delete sanctions[id];
+          saveSanctions();
+          document.getElementById("b-users").textContent = users.length;
+          render();
+          toast("Cuenta eliminada", "ok");
+        } catch {
+          toast("Error al eliminar", "err");
+        }
+      }
 
-// ── Grupos ────────────────────────────────────────────────────────────────────
-let groupSearch = '';
-function renderGroups() {
-  const filtered = allGroups.filter(g =>
-    (g.groupName||'').toLowerCase().includes(groupSearch.toLowerCase())
-  );
-  return `
+      // ── Grupos ─────────────────────────────────────────────────────────────────────
+      function rGroups() {
+        const f = groups.filter((g) =>
+          (g.groupName || "").toLowerCase().includes(gSearch.toLowerCase())
+        );
+        return `
   <div class="card">
     <div class="card-header">
-      <span class="card-title">💬 Grupos <span class="card-count">${filtered.length}</span></span>
-      <div class="search-box">
-        <span>🔍</span>
-        <input placeholder="Buscar grupo..." value="${groupSearch}" oninput="groupSearch=this.value;render()" />
-      </div>
+      <span class="card-title">💬 Grupos <span class="card-count">${
+        f.length
+      }</span></span>
+      <div class="search-box"><span>🔍</span><input placeholder="Buscar grupo..." value="${gSearch}" oninput="gSearch=this.value;render()"/></div>
     </div>
-    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">💬</div><p>No hay grupos creados</p></div>' : `
-    <table>
-      <thead><tr><th>GRUPO</th><th>MIEMBROS</th><th>ADMINS</th><th>MENSAJES</th><th>CREADO</th><th>ACCIONES</th></tr></thead>
-      <tbody>
-        ${filtered.map(g => `
-        <tr>
-          <td>
-            <div class="user-cell">
-              <div class="avatar-placeholder" style="width:34px;height:34px;background:rgba(159,122,234,.15);border:1px solid rgba(159,122,234,.25);color:var(--accent2);font-size:15px">👥</div>
-              <div><div class="user-name">${g.groupName||'Sin nombre'}</div><div class="user-phone">${g._id}</div></div>
-            </div>
-          </td>
-          <td><span class="badge badge-blue">${(g.participants||[]).length} miembros</span></td>
-          <td><span class="badge badge-purple">${(g.admins||[]).length} admin(s)</span></td>
-          <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--accent)">${g.messageCount||0}</td>
-          <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fmtDate(g.createdAt)}</td>
-          <td>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-ghost" onclick="showGroupDetail('${g._id}')">Ver miembros</button>
-              <button class="btn btn-sm btn-danger" onclick="confirmDeleteGroup('${g._id}','${(g.groupName||'Grupo').replace(/'/g,"\\'")}')">Eliminar</button>
-            </div>
-          </td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`}
+    ${
+      f.length === 0
+        ? '<div class="empty"><div class="icon">💬</div><p>No hay grupos creados</p></div>'
+        : `
+    <table><thead><tr><th>GRUPO</th><th>MIEMBROS</th><th>ADMINS</th><th>MENSAJES</th><th>CREADO</th><th>ACCIONES</th></tr></thead><tbody>
+    ${f
+      .map(
+        (g) => `<tr>
+      <td><div class="user-cell">
+        <div class="avatar-ph" style="width:34px;height:34px;background:rgba(159,122,234,.15);border:1px solid rgba(159,122,234,.25);color:var(--accent2);font-size:16px">👥</div>
+        <div><div class="user-name">${
+          g.groupName || "Sin nombre"
+        }</div><div class="user-phone">${g._id}</div></div>
+      </div></td>
+      <td><span class="badge bb">${
+        (g.participants || []).length
+      } miembros</span></td>
+      <td><span class="badge bp">${(g.admins || []).length} admin(s)</span></td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--accent)">${
+        g.messageCount || 0
+      }</td>
+      <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fDate(
+        g.createdAt
+      )}</td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-g" onclick="showGroup('${
+          g._id
+        }')">Ver miembros</button>
+        <button class="btn btn-sm btn-d" onclick="confirmDelGroup('${
+          g._id
+        }','${esc(g.groupName || "Grupo")}')">Eliminar</button>
+      </div></td>
+    </tr>`
+      )
+      .join("")}
+    </tbody></table>`
+    }
   </div>`;
-}
+      }
 
-function showGroupDetail(id) {
-  const g = allGroups.find(x => x._id === id);
-  if (!g) return;
-  const adminIds = (g.admins||[]).map(a => a._id || a);
-  const members = (g.participants||[]).map(p => {
-    const isAdmin = adminIds.includes(p._id || p);
-    return `
+      function showGroup(id) {
+        const g = groups.find((x) => x._id === id);
+        if (!g) return;
+        const adminIds = (g.admins || []).map((a) => a._id || a);
+        const rows = (g.participants || [])
+          .map(
+            (p) => `
     <div class="member-row">
-      ${avatarHtml(p, 36)}
-      <div class="info">
-        <p>${p.name||'Sin nombre'}</p>
-        <span>${p.phone||'—'}</span>
-      </div>
-      ${isAdmin
-        ? '<span class="badge badge-orange">👑 Admin</span>'
-        : '<span class="badge badge-gray">👤 Miembro</span>'}
-      ${p.online ? '<span class="badge badge-green" style="margin-left:4px">● En línea</span>' : ''}
-    </div>`;
-  });
-  showModal(`
-    <div class="modal-title">💬 ${g.groupName||'Grupo'}</div>
-    <div class="modal-sub">${(g.participants||[]).length} miembros · ${(g.admins||[]).length} administrador(es) · ${g.messageCount||0} mensajes</div>
-    <div class="member-list" style="max-height:320px;overflow-y:auto">${members.join('')}</div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cerrar</button>
-    </div>
-  `);
-}
+      ${avHtml(p, 36)}
+      <div style="flex:1"><p style="font-size:13px;font-weight:600;color:#fff">${
+        p.name || "Sin nombre"
+      }</p><span style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${
+              p.phone || "—"
+            }</span></div>
+      ${
+        adminIds.includes(p._id || p)
+          ? '<span class="badge bo">👑 Admin</span>'
+          : '<span class="badge bgr">👤 Miembro</span>'
+      }
+      ${
+        p.online
+          ? '<span class="badge bg" style="margin-left:4px">● En línea</span>'
+          : ""
+      }
+    </div>`
+          )
+          .join("");
+        showModal(`
+    <div class="modal-title">💬 ${g.groupName || "Grupo"}</div>
+    <div class="modal-sub">${(g.participants || []).length} miembros · ${
+          (g.admins || []).length
+        } admin(s) · ${g.messageCount || 0} mensajes</div>
+    <div style="max-height:340px;overflow-y:auto">${
+      rows || '<div class="empty"><p>Sin miembros</p></div>'
+    }</div>
+    <div class="modal-actions"><button class="btn btn-g" style="flex:1" onclick="closeModal()">Cerrar</button></div>`);
+      }
 
-function confirmDeleteGroup(id, name) {
-  showModal(`
+      function confirmDelGroup(id, name) {
+        showModal(`
     <div class="modal-title">🗑️ Eliminar grupo</div>
-    <div class="modal-sub">¿Eliminar el grupo <strong style="color:#fff">${name}</strong>?<br>Se borrarán todos sus mensajes.</div>
+    <div class="modal-sub">¿Eliminar <strong style="color:#fff">${name}</strong>? Se borrarán todos sus mensajes.</div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-danger" style="flex:2" onclick="deleteGroup('${id}')">Sí, eliminar</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-d" style="flex:2" onclick="delGroup('${id}')">Sí, eliminar</button>
+    </div>`);
+      }
 
-async function deleteGroup(id) {
-  closeModal();
-  try {
-    await api(`/api/admin/groups/${id}`, { method: 'DELETE' });
-    allGroups = allGroups.filter(g => g._id !== id);
-    document.getElementById('badge-groups').textContent = allGroups.length;
-    render();
-    showToast('Grupo eliminado', 'success');
-  } catch { showToast('Error al eliminar grupo', 'error'); }
-}
+      async function delGroup(id) {
+        closeModal();
+        try {
+          await api(`/api/admin/groups/${id}`, { method: "DELETE" });
+          groups = groups.filter((g) => g._id !== id);
+          document.getElementById("b-groups").textContent = groups.length;
+          render();
+          toast("Grupo eliminado", "ok");
+        } catch {
+          toast("Error al eliminar", "err");
+        }
+      }
 
-// ── Sanciones ─────────────────────────────────────────────────────────────────
-let localSanctions = JSON.parse(localStorage.getItem('admin_sanctions') || '{}');
-
-function renderSanctions() {
-  const sanctionedList = allUsers.filter(u => localSanctions[u._id]);
-  const totalBlocked = Object.keys(localSanctions).filter(id => (localSanctions[id]?.count||0) >= 1).length;
-  document.getElementById('badge-sanctions').textContent = sanctionedList.length;
-
-  return `
+      // ── Sanciones ──────────────────────────────────────────────────────────────────
+      function rSanctions() {
+        const sanctList = users.filter((u) => sanctions[u._id]);
+        const sc = sanctList.length;
+        document.getElementById("b-sanc").textContent = sc;
+        return `
   <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
-    <div class="stat-card orange">
-      <div class="stat-icon">⚠️</div>
-      <div class="stat-val">${sanctionedList.length}</div>
-      <div class="stat-label">Usuarios sancionados</div>
-    </div>
-    <div class="stat-card red">
-      <div class="stat-icon">🚫</div>
-      <div class="stat-val">${allUsers.filter(u=>u.status==='banned').length}</div>
-      <div class="stat-label">Cuentas baneadas</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="stat-icon">📋</div>
-      <div class="stat-val">${Object.values(localSanctions).reduce((s,x)=>s+(x.count||0),0)}</div>
-      <div class="stat-label">Total de sanciones</div>
-    </div>
+    <div class="stat-card orange"><div class="stat-icon">⚠️</div><div class="stat-val">${sc}</div><div class="stat-label">Con sanciones</div></div>
+    <div class="stat-card red"><div class="stat-icon">🚫</div><div class="stat-val">${
+      users.filter((u) => u.status === "banned").length
+    }</div><div class="stat-label">Cuentas baneadas</div></div>
+    <div class="stat-card blue"><div class="stat-icon">📋</div><div class="stat-val">${Object.values(
+      sanctions
+    ).reduce(
+      (s, x) => s + (x.count || 0),
+      0
+    )}</div><div class="stat-label">Total sanciones</div></div>
   </div>
-
   <div class="card">
     <div class="card-header">
       <span class="card-title">⚠️ Usuarios con sanciones</span>
-      <button class="btn btn-sm btn-warn" onclick="showAddSanctionModal()">+ Nueva sanción</button>
+      <button class="btn btn-sm btn-w" onclick="showAddSanction()">+ Nueva sanción</button>
     </div>
-    ${sanctionedList.length === 0 ? '<div class="empty-state"><div class="icon">✅</div><p>No hay usuarios sancionados</p></div>' : `
-    <table>
-      <thead><tr><th>USUARIO</th><th>SANCIONES</th><th>MOTIVOS</th><th>ÚLTIMA SANCIÓN</th><th>ACCIONES</th></tr></thead>
-      <tbody>
-        ${sanctionedList.map(u => {
-          const s = localSanctions[u._id];
-          return `
-          <tr>
-            <td><div class="user-cell">${avatarHtml(u)}<div><div class="user-name">${u.name||u.phone}</div><div class="user-phone">${u.phone}</div></div></div></td>
-            <td>
-              ${s.count >= 2
-                ? '<span class="badge badge-red">🚫 2/2 — Cuenta eliminada</span>'
-                : `<span class="badge badge-orange">⚠️ ${s.count}/2</span>`}
-            </td>
-            <td style="font-size:12px;color:var(--muted2);max-width:180px">${(s.reasons||[]).join(', ')||'—'}</td>
-            <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fmtTime(s.date)}</td>
-            <td>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-sm btn-warn" onclick="addSanction('${u._id}','${(u.name||u.phone).replace(/'/g,"\\'")}')">+ Sanción</button>
-                <button class="btn btn-sm btn-ghost" onclick="removeSanctions('${u._id}')">Limpiar</button>
-              </div>
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`}
+    ${
+      sanctList.length === 0
+        ? '<div class="empty"><div class="icon">✅</div><p>No hay usuarios sancionados</p></div>'
+        : `
+    <table><thead><tr><th>USUARIO</th><th>SANCIONES</th><th>MOTIVOS</th><th>ÚLTIMA</th><th>ACCIONES</th></tr></thead><tbody>
+    ${sanctList
+      .map((u) => {
+        const s = sanctions[u._id];
+        return `<tr>
+        <td><div class="user-cell">${avHtml(u)}<div><div class="user-name">${
+          u.name || u.phone
+        }</div><div class="user-phone">${u.phone}</div></div></div></td>
+        <td>${
+          s.count >= 2
+            ? '<span class="badge br">🚫 2/2 Eliminado</span>'
+            : `<span class="badge bo">⚠️ ${s.count}/2</span>`
+        }</td>
+        <td style="font-size:12px;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${
+          (s.reasons || []).join(", ") || "—"
+        }</td>
+        <td style="font-size:11px;color:var(--muted2);font-family:JetBrains Mono,monospace">${fTime(
+          s.date
+        )}</td>
+        <td><div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-w" onclick="addSanction('${
+            u._id
+          }','${esc(u.name || u.phone)}')">+ Sanción</button>
+          <button class="btn btn-sm btn-g" onclick="clearSanctions('${
+            u._id
+          }')">Limpiar</button>
+        </div></td>
+      </tr>`;
+      })
+      .join("")}
+    </tbody></table>`
+    }
   </div>
-
-  <div class="card" style="margin-top:20px">
+  <div class="card" style="margin-top:16px">
     <div class="card-header"><span class="card-title">ℹ️ Política de sanciones</span></div>
-    <div style="padding:16px 20px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        ${[
-          ['1ª Sanción','⚠️ Advertencia formal. El usuario recibe una notificación.','orange'],
-          ['2ª Sanción','🚫 La cuenta se elimina automáticamente con todos sus datos.','red'],
-          ['Motivos válidos','Spam, acoso, contenido inapropiado, fraude, suplantación.','blue'],
-          ['Apelaciones','El usuario puede contactar soporte en soporte@securechat.app','green'],
-        ].map(([t,d,c]) => `
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
-            <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">${t}</div>
-            <div style="font-size:12px;color:var(--muted2);line-height:1.5">${d}</div>
-          </div>`).join('')}
-      </div>
+    <div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${[
+        [
+          "1ª Sanción",
+          "⚠️ Advertencia formal. El usuario recibe notificación.",
+        ],
+        ["2ª Sanción", "🚫 La cuenta se elimina automáticamente."],
+        [
+          "Motivos",
+          "Spam, acoso, contenido inapropiado, fraude, suplantación.",
+        ],
+        ["Apelaciones", "Contactar soporte@securechat.app"],
+      ]
+        .map(
+          ([t, d]) => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">${t}</div>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.5">${d}</div>
+      </div>`
+        )
+        .join("")}
     </div>
   </div>`;
-}
+      }
 
-function showAddSanctionModal() {
-  const opts = allUsers.map(u => `<option value="${u._id}">${u.name||u.phone} (${u.phone})</option>`).join('');
-  showModal(`
+      const REASONS = [
+        "Spam o publicidad no deseada",
+        "Acoso o amenazas",
+        "Contenido inapropiado",
+        "Fraude o estafa",
+        "Suplantación de identidad",
+        "Violación de términos de uso",
+      ];
+
+      function showAddSanction() {
+        const opts = users
+          .map(
+            (u) =>
+              `<option value="${u._id}">${u.name || u.phone} (${
+                u.phone
+              })</option>`
+          )
+          .join("");
+        showModal(`
     <div class="modal-title">⚠️ Agregar sanción</div>
-    <div class="modal-sub">Selecciona el usuario y el motivo de la sanción. Con 2 sanciones, la cuenta se elimina automáticamente.</div>
-    <div class="form-group">
-      <label class="form-label">USUARIO</label>
-      <select class="form-input" id="sanction-user">${opts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">MOTIVO</label>
-      <select class="form-input" id="sanction-reason">
-        <option>Spam o publicidad no deseada</option>
-        <option>Acoso o amenazas</option>
-        <option>Contenido inapropiado</option>
-        <option>Fraude o estafa</option>
-        <option>Suplantación de identidad</option>
-        <option>Violación de términos de uso</option>
-      </select>
-    </div>
+    <div class="modal-sub">Con 2 sanciones la cuenta se elimina automáticamente.</div>
+    <div class="fg"><label class="fl">USUARIO</label><select class="fi" id="s-user">${opts}</select></div>
+    <div class="fg"><label class="fl">MOTIVO</label><select class="fi" id="s-reason">${REASONS.map(
+      (r) => `<option>${r}</option>`
+    ).join("")}</select></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-warn" style="flex:2" onclick="doAddSanction()">Aplicar sanción</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-w" style="flex:2" onclick="doAddSanction()">Aplicar sanción</button>
+    </div>`);
+      }
 
-function addSanction(userId, name) {
-  const reasons = ['Spam o publicidad no deseada','Acoso o amenazas','Contenido inapropiado','Fraude o estafa','Suplantación de identidad','Violación de términos de uso'];
-  const opts = reasons.map(r => `<option>${r}</option>`).join('');
-  showModal(`
+      function doAddSanction() {
+        const uid = document.getElementById("s-user")?.value;
+        const reason =
+          document.getElementById("s-reason")?.value || "Violación";
+        closeModal();
+        if (uid) applySanction(uid, reason);
+      }
+
+      function addSanction(uid, name) {
+        showModal(`
     <div class="modal-title">⚠️ Sancionar a ${name}</div>
-    <div class="modal-sub">Selecciona el motivo. Con 2 sanciones la cuenta se elimina automáticamente.</div>
-    <div class="form-group">
-      <label class="form-label">MOTIVO</label>
-      <select class="form-input" id="sanction-reason-direct">${opts}</select>
-    </div>
+    <div class="modal-sub">Con 2 sanciones la cuenta se elimina automáticamente.</div>
+    <div class="fg"><label class="fl">MOTIVO</label><select class="fi" id="s-reason2">${REASONS.map(
+      (r) => `<option>${r}</option>`
+    ).join("")}</select></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-warn" style="flex:2" onclick="applyDirectSanction('${userId}')">Aplicar sanción</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-w" style="flex:2" onclick="applyDirectSanction('${uid}')">Aplicar sanción</button>
+    </div>`);
+      }
 
-function applyDirectSanction(userId) {
-  const reason = document.getElementById('sanction-reason-direct')?.value || 'Violación de normas';
-  closeModal();
-  applySanction(userId, reason);
-}
+      function applyDirectSanction(uid) {
+        const reason =
+          document.getElementById("s-reason2")?.value || "Violación";
+        closeModal();
+        applySanction(uid, reason);
+      }
 
-function doAddSanction() {
-  const userId = document.getElementById('sanction-user')?.value;
-  const reason = document.getElementById('sanction-reason')?.value || 'Violación de normas';
-  closeModal();
-  if (userId) applySanction(userId, reason);
-}
+      async function applySanction(uid, reason) {
+        if (!sanctions[uid])
+          sanctions[uid] = { count: 0, reasons: [], date: new Date() };
+        sanctions[uid].count++;
+        sanctions[uid].reasons.push(reason);
+        sanctions[uid].date = new Date();
+        saveSanctions();
+        if (sanctions[uid].count >= 2) {
+          try {
+            await api(`/api/admin/users/${uid}`, { method: "DELETE" });
+            users = users.filter((u) => u._id !== uid);
+            delete sanctions[uid];
+            saveSanctions();
+            document.getElementById("b-users").textContent = users.length;
+            toast("⚠️ Cuenta eliminada automáticamente por 2 sanciones", "err");
+          } catch {
+            toast("Sanción aplicada (error al eliminar del servidor)", "err");
+          }
+        } else {
+          toast(`Sanción ${sanctions[uid].count}/2 aplicada`, "ok");
+        }
+        render();
+      }
 
-async function applySanction(userId, reason) {
-  if (!localSanctions[userId]) localSanctions[userId] = { count: 0, reasons: [], date: new Date() };
-  localSanctions[userId].count++;
-  localSanctions[userId].reasons.push(reason);
-  localSanctions[userId].date = new Date();
-  localStorage.setItem('admin_sanctions', JSON.stringify(localSanctions));
+      function clearSanctions(uid) {
+        delete sanctions[uid];
+        saveSanctions();
+        render();
+        toast("Sanciones eliminadas", "ok");
+      }
 
-  if (localSanctions[userId].count >= 2) {
-    try {
-      await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
-      allUsers = allUsers.filter(u => u._id !== userId);
-      delete localSanctions[userId];
-      localStorage.setItem('admin_sanctions', JSON.stringify(localSanctions));
-      showToast('⚠️ Cuenta eliminada por 2 sanciones', 'error');
-    } catch { showToast('Sanción aplicada (error al eliminar del servidor)', 'error'); }
-  } else {
-    showToast(`Sanción ${localSanctions[userId].count}/2 aplicada`, 'success');
-  }
-  render();
-}
-
-function removeSanctions(userId) {
-  delete localSanctions[userId];
-  localStorage.setItem('admin_sanctions', JSON.stringify(localSanctions));
-  render();
-  showToast('Sanciones eliminadas', 'success');
-}
-
-// ── Cifrado E2E ───────────────────────────────────────────────────────────────
-function renderEncryption() {
-  const total = allUsers.length;
-  const msgs = stats.totalMessages || 0;
-  return `
+      // ── Cifrado ────────────────────────────────────────────────────────────────────
+      function rEncryption() {
+        const total = users.length,
+          msgs = stats.totalMessages || 0;
+        return `
   <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat-card green"><div class="stat-icon">🔒</div><div class="stat-val">E2E</div><div class="stat-label">Cifrado activo</div><div class="stat-trend">✅ 100% mensajes</div></div>
     <div class="stat-card blue"><div class="stat-icon">🔑</div><div class="stat-val">${total}</div><div class="stat-label">Pares de claves</div><div class="stat-trend">1 por usuario</div></div>
     <div class="stat-card purple"><div class="stat-icon">🛡️</div><div class="stat-val">AES</div><div class="stat-label">Algoritmo</div><div class="stat-trend">256-bit GCM</div></div>
     <div class="stat-card green"><div class="stat-icon">✉️</div><div class="stat-val">${msgs.toLocaleString()}</div><div class="stat-label">Mensajes cifrados</div></div>
   </div>
-
   <div class="enc-grid" style="margin-bottom:16px">
     ${[
-      ['🔑','Cifrado de mensajes','Todos los mensajes usan cifrado extremo a extremo. Solo el remitente y el destinatario pueden leer el contenido. El servidor nunca almacena mensajes en texto plano.'],
-      ['🔐','Gestión de claves','Cada usuario genera un par de claves pública/privada al registrarse. La clave privada nunca sale del dispositivo. El servidor solo almacena la clave pública.'],
-      ['🛡️','Protección en grupos','Los mensajes grupales usan un esquema de claves compartidas cifradas individualmente para cada participante. Añadir o eliminar miembros genera nuevas claves.'],
-      ['📱','Forward Secrecy','Se generan claves de sesión efímeras para cada conversación. Comprometer una clave no expone mensajes pasados ni futuros.'],
-      ['🔍','Verificación','Los usuarios pueden verificar la identidad del destinatario comparando huellas de claves públicas (QR o cadena de texto) para detectar ataques MITM.'],
-      ['🗄️','Almacenamiento','Los mensajes se almacenan cifrados en MongoDB. Sin la clave privada del destinatario, los datos son ilegibles incluso para el administrador del servidor.'],
-    ].map(([icon,title,desc]) => `
-    <div class="enc-card">
-      <h4>${icon} ${title}</h4>
-      <p>${desc}</p>
-      <div class="enc-status">✅ Activo y verificado</div>
-    </div>`).join('')}
+      [
+        "🔑",
+        "Cifrado de mensajes",
+        "Todos los mensajes usan E2E. Solo remitente y destinatario pueden leer el contenido.",
+      ],
+      [
+        "🔐",
+        "Gestión de claves",
+        "Cada usuario genera claves pública/privada al registrarse. La privada nunca sale del dispositivo.",
+      ],
+      [
+        "🛡️",
+        "Grupos cifrados",
+        "Los mensajes grupales usan claves compartidas cifradas individualmente para cada participante.",
+      ],
+      [
+        "📱",
+        "Forward Secrecy",
+        "Claves de sesión efímeras por conversación. Comprometer una clave no expone mensajes previos.",
+      ],
+      [
+        "🔍",
+        "Verificación",
+        "Los usuarios pueden verificar identidad comparando huellas de claves públicas.",
+      ],
+      [
+        "🗄️",
+        "Almacenamiento",
+        "Mensajes cifrados en MongoDB. Sin la clave privada del destinatario son ilegibles.",
+      ],
+    ]
+      .map(
+        ([ic, t, d]) =>
+          `<div class="enc-card"><h4>${ic} ${t}</h4><p>${d}</p><div class="enc-status">✅ Activo y verificado</div></div>`
+      )
+      .join("")}
   </div>
-
   <div class="card">
-    <div class="card-header"><span class="card-title">🧪 Estado del sistema de cifrado</span></div>
-    <div style="padding:16px 20px">
+    <div class="card-header"><span class="card-title">🧪 Estado del sistema</span></div>
+    <div style="padding:12px 20px">
       ${[
-        ['Cifrado de mensajes 1-a-1','Operativo','green'],
-        ['Cifrado de mensajes grupales','Operativo','green'],
-        ['Cifrado de archivos multimedia','Operativo','green'],
-        ['Almacenamiento cifrado MongoDB','Operativo','green'],
-        ['Verificación de claves','Operativo','green'],
-        ['Cifrado en tránsito (TLS 1.3)','Operativo','green'],
-        ['Rotación automática de claves','Próximamente','orange'],
-        ['Backup cifrado local','Próximamente','orange'],
-      ].map(([name,status,c]) => `
+        ["Cifrado 1-a-1", "Operativo", "bg"],
+        ["Cifrado grupal", "Operativo", "bg"],
+        ["Cifrado multimedia", "Operativo", "bg"],
+        ["MongoDB cifrado", "Operativo", "bg"],
+        ["Verificación claves", "Operativo", "bg"],
+        ["TLS 1.3 en tránsito", "Operativo", "bg"],
+        ["Rotación de claves", "Próximamente", "bo"],
+        ["Backup cifrado local", "Próximamente", "bo"],
+      ]
+        .map(
+          ([n, s, c]) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:13px;color:var(--text)">${name}</span>
-          <span class="badge badge-${c}">${status === 'Operativo' ? '✅' : '🔄'} ${status}</span>
-        </div>`).join('')}
+          <span style="font-size:13px;color:var(--text)">${n}</span>
+          <span class="badge ${c}">${
+            s === "Operativo" ? "✅" : " 🔄"
+          } ${s}</span>
+        </div>`
+        )
+        .join("")}
     </div>
   </div>`;
-}
+      }
 
-// ── Chatbot ───────────────────────────────────────────────────────────────────
-function renderChatbot() {
-  return `
-  <div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start">
+      // ── Chatbot ────────────────────────────────────────────────────────────────────
+      function rChatbot() {
+        return `
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
     <div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🤖 Base de conocimiento <span class="card-count">${chatbotKB.length} entradas</span></span>
-          <button class="btn btn-sm btn-primary" onclick="showAddKBModal()">+ Agregar</button>
+          <span class="card-title">🤖 Base de conocimiento <span class="card-count">${
+            kb.length
+          } entradas</span></span>
+          <button class="btn btn-sm btn-p" onclick="showAddKB()">+ Agregar</button>
         </div>
-        <div style="padding:14px 16px">
-          ${chatbotKB.map((entry, i) => `
+        <div style="padding:12px 16px">
+          ${kb
+            .map(
+              (e, i) => `
           <div class="kb-item">
-            <div class="kb-number">${i+1}</div>
+            <div class="kb-num">${i + 1}</div>
             <div style="flex:1;min-width:0">
-              <div class="kb-keywords">
-                ${entry.keywords.map(k => `<span class="kb-kw">${k}</span>`).join('')}
-              </div>
-              <div class="kb-response-preview">${entry.response.replace(/\*\*/g,'').replace(/\n/g,' ')}</div>
+              <div class="kb-keywords">${e.keywords
+                .map((k) => `<span class="kb-kw">${k}</span>`)
+                .join("")}</div>
+              <div class="kb-preview">${e.response
+                .replace(/\*\*/g, "")
+                .replace(/\n/g, " ")}</div>
             </div>
             <div style="display:flex;flex-direction:column;gap:5px">
-              <button class="btn btn-sm btn-ghost" onclick="showEditKBModal(${entry.id})">Editar</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteKBEntry(${entry.id})">Borrar</button>
+              <button class="btn btn-sm btn-g" onclick="showEditKB(${
+                e.id
+              })">Editar</button>
+              <button class="btn btn-sm btn-d" onclick="delKB(${
+                e.id
+              })">Borrar</button>
             </div>
-          </div>`).join('')}
+          </div>`
+            )
+            .join("")}
         </div>
       </div>
     </div>
-
     <div>
       <div class="card" style="margin-bottom:14px">
-        <div class="card-header"><span class="card-title">📊 Estadísticas del chatbot</span></div>
+        <div class="card-header"><span class="card-title">📊 Estadísticas</span></div>
         <div style="padding:14px 16px">
           ${[
-            ['Total de respuestas','🎯',chatbotKB.length,'blue'],
-            ['Palabras clave totales','🔑',chatbotKB.reduce((s,e)=>s+e.keywords.length,0),'purple'],
-            ['Respuestas genéricas','💭',3,'gray'],
-          ].map(([label,icon,val,c]) => `
+            ["Entradas totales", kb.length, "bb"],
+            [
+              "Palabras clave",
+              kb.reduce((s, e) => s + e.keywords.length, 0),
+              "bp",
+            ],
+            ["Respuestas genéricas", 3, "bgr"],
+          ]
+            .map(
+              ([l, v, c]) => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:13px;color:var(--muted2)">${icon} ${label}</span>
-            <span class="badge badge-${c}">${val}</span>
-          </div>`).join('')}
+            <span style="font-size:13px;color:var(--muted2)">${l}</span>
+            <span class="badge ${c}">${v}</span>
+          </div>`
+            )
+            .join("")}
         </div>
       </div>
-
       <div class="card">
-        <div class="card-header"><span class="card-title">⚙️ Configuración</span></div>
-        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-          ${[
-            ['Delay mínimo','500ms'],
-            ['Delay máximo','2000ms'],
-            ['Normalización acentos','Activo'],
-            ['Coincidencia parcial','Activo'],
-            ['Respuestas genéricas','3 disponibles'],
-          ].map(([k,v]) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
-            <span style="color:var(--muted2)">${k}</span>
-            <span style="color:#fff;font-family:JetBrains Mono,monospace">${v}</span>
-          </div>`).join('')}
-          <div style="margin-top:6px;padding:10px;background:rgba(99,179,237,.06);border:1px solid rgba(99,179,237,.15);border-radius:8px">
-            <p style="font-size:11px;color:var(--muted2);line-height:1.5">Los cambios se sincronizan automáticamente con la app. Recarga la vista del chatbot para ver los cambios.</p>
-          </div>
+        <div class="card-header"><span class="card-title">ℹ️ Cómo funciona</span></div>
+        <div style="padding:14px 16px;font-size:12px;color:var(--muted2);line-height:1.7">
+          El chatbot compara el mensaje del usuario contra las <strong style="color:#fff">palabras clave</strong> de cada entrada y responde con la que tenga más coincidencias.<br><br>
+          Si ninguna coincide, usa una de las 3 <strong style="color:#fff">respuestas genéricas</strong> integradas.<br><br>
+          Los cambios se guardan en el navegador y se sincronizan con la app automáticamente.
         </div>
       </div>
     </div>
   </div>`;
-}
+      }
 
-function showAddKBModal() {
-  showModal(`
+      function showAddKB() {
+        showModal(`
     <div class="modal-title">➕ Nueva respuesta del chatbot</div>
-    <div class="modal-sub">Define las palabras clave que activarán esta respuesta (separadas por comas) y el texto de respuesta.</div>
-    <div class="form-group">
-      <label class="form-label">PALABRAS CLAVE (separadas por comas)</label>
-      <input class="form-input" id="kb-keywords" placeholder="ej: contraseña, password, clave, pin" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">RESPUESTA (soporta **negrita** y saltos de línea)</label>
-      <textarea class="form-input" id="kb-response" rows="5" placeholder="🔑 **Título**\n\nEscribe aquí la respuesta..."></textarea>
-    </div>
+    <div class="fg"><label class="fl">PALABRAS CLAVE (separadas por comas)</label><input class="fi" id="kb-k" placeholder="cifrado, password, clave"/></div>
+    <div class="fg"><label class="fl">RESPUESTA (soporta **negrita**)</label><textarea class="fi" id="kb-r" rows="5" placeholder="🔒 **Título**\n\nEscribe la respuesta..."></textarea></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" style="flex:2" onclick="saveNewKBEntry()">Guardar</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-p" style="flex:2" onclick="saveNewKB()">Guardar</button>
+    </div>`);
+      }
 
-function saveNewKBEntry() {
-  const keywords = (document.getElementById('kb-keywords')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
-  const response = document.getElementById('kb-response')?.value || '';
-  if (!keywords.length || !response.trim()) { showToast('Completa todos los campos', 'error'); return; }
-  const id = Date.now();
-  chatbotKB.push({ id, keywords, response });
-  saveKB();
-  closeModal();
-  render();
-  showToast('Respuesta agregada al chatbot', 'success');
-}
+      function saveNewKB() {
+        const keywords = (document.getElementById("kb-k")?.value || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const response = document.getElementById("kb-r")?.value || "";
+        if (!keywords.length || !response.trim()) {
+          toast("Completa todos los campos", "err");
+          return;
+        }
+        kb.push({ id: Date.now(), keywords, response });
+        saveKB();
+        closeModal();
+        render();
+        toast("Respuesta agregada", "ok");
+      }
 
-function showEditKBModal(id) {
-  const entry = chatbotKB.find(e => e.id === id);
-  if (!entry) return;
-  showModal(`
+      function showEditKB(id) {
+        const e = kb.find((x) => x.id === id);
+        if (!e) return;
+        showModal(`
     <div class="modal-title">✏️ Editar respuesta</div>
-    <div class="form-group">
-      <label class="form-label">PALABRAS CLAVE</label>
-      <input class="form-input" id="kb-edit-keywords" value="${entry.keywords.join(', ')}" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">RESPUESTA</label>
-      <textarea class="form-input" id="kb-edit-response" rows="5">${entry.response}</textarea>
-    </div>
+    <div class="fg"><label class="fl">PALABRAS CLAVE</label><input class="fi" id="kb-ek" value="${e.keywords.join(
+      ", "
+    )}"/></div>
+    <div class="fg"><label class="fl">RESPUESTA</label><textarea class="fi" id="kb-er" rows="5">${
+      e.response
+    }</textarea></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" style="flex:2" onclick="saveEditKBEntry(${id})">Guardar cambios</button>
-    </div>
-  `);
-}
+      <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-p" style="flex:2" onclick="saveEditKB(${id})">Guardar cambios</button>
+    </div>`);
+      }
 
-function saveEditKBEntry(id) {
-  const keywords = (document.getElementById('kb-edit-keywords')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
-  const response = document.getElementById('kb-edit-response')?.value || '';
-  if (!keywords.length || !response.trim()) { showToast('Completa todos los campos', 'error'); return; }
-  const idx = chatbotKB.findIndex(e => e.id === id);
-  if (idx >= 0) { chatbotKB[idx].keywords = keywords; chatbotKB[idx].response = response; }
-  saveKB();
-  closeModal();
-  render();
-  showToast('Respuesta actualizada', 'success');
-}
+      function saveEditKB(id) {
+        const keywords = (document.getElementById("kb-ek")?.value || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const response = document.getElementById("kb-er")?.value || "";
+        if (!keywords.length || !response.trim()) {
+          toast("Completa todos los campos", "err");
+          return;
+        }
+        const i = kb.findIndex((x) => x.id === id);
+        if (i >= 0) {
+          kb[i].keywords = keywords;
+          kb[i].response = response;
+        }
+        saveKB();
+        closeModal();
+        render();
+        toast("Respuesta actualizada", "ok");
+      }
 
-function deleteKBEntry(id) {
-  chatbotKB = chatbotKB.filter(e => e.id !== id);
-  saveKB();
-  render();
-  showToast('Entrada eliminada', 'success');
-}
+      function delKB(id) {
+        kb = kb.filter((e) => e.id !== id);
+        saveKB();
+        render();
+        toast("Entrada eliminada", "ok");
+      }
 
-// ── Modal helpers ─────────────────────────────────────────────────────────────
-function showModal(html) {
-  document.getElementById('modal-inner').innerHTML = html;
-  document.getElementById('modal').style.display = 'flex';
-}
-function closeModal(e) {
-  if (e && e.target !== document.getElementById('modal')) return;
-  document.getElementById('modal').style.display = 'none';
-}
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-let toastTimer;
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
-  t.className = `toast ${type}`;
-  t.style.display = 'flex';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
-}
-</script>
-</body>
+      // ── Modal & Toast ──────────────────────────────────────────────────────────────
+      function showModal(html) {
+        document.getElementById("modal-inner").innerHTML = html;
+        document.getElementById("modal").style.display = "flex";
+      }
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+      }
+      let tt;
+      function toast(msg, type = "ok") {
+        const el = document.getElementById("toast");
+        el.textContent = (type === "ok" ? "✅ " : "❌ ") + msg;
+        el.className = `toast ${type}`;
+        el.style.display = "flex";
+        clearTimeout(tt);
+        tt = setTimeout(() => (el.style.display = "none"), 3000);
+      }
+      function esc(s) {
+        return (s || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
 </html>

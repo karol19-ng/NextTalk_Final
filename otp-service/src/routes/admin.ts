@@ -193,7 +193,10 @@ router.get("/stats", async (_req: Request, res: Response) => {
 
 // ── SANCIONES / REPORTES ───────────────────────────────────────────────────────
 // Almacenamos en memoria (en producción usar una colección MongoDB)
-const sanctions: Record<string, { count: number; reasons: string[]; date: Date }> = {};
+const sanctions: Record<
+  string,
+  { count: number; reasons: string[]; date: Date }
+> = {};
 
 // GET /api/admin/sanctions — lista de usuarios sancionados
 router.get("/sanctions", async (_req: Request, res: Response) => {
