@@ -36,7 +36,7 @@ const io = new Server(server, {
 // };
 
 const corsOptions: cors.CorsOptions = {
-  origin: "https://robust-spontaneity-production.up.railway.app",
+  origin: process.env.FRONTEND_URL || "https://robust-spontaneity-production.up.railway.app",
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
