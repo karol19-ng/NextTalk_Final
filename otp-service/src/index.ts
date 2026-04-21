@@ -18,6 +18,8 @@ import { setupSocket } from "./socket/socket";
 
 dotenv.config();
 
+// deploy fix
+
 const app = express();
 const server = http.createServer(app);
 
