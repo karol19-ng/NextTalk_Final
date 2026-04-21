@@ -25,14 +25,21 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
+// const corsOptions: cors.CorsOptions = {
+//   origin: (origin, callback) => {
+//     callback(null, origin || "*");
+//   },
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//   // ✅ x-admin-key agregado para que el panel admin funcione
+//   allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"],
+// };
+
 const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    callback(null, origin || "*");
-  },
+  origin: "https://zucchini-fulfillment-production-f7ed.up.railway.app",
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  // ✅ x-admin-key agregado para que el panel admin funcione
-  allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 // ✅ CORS y preflight ANTES que cualquier ruta
